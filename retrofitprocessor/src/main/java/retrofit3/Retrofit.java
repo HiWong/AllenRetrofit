@@ -33,6 +33,8 @@ import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import retrofit3.annotation.bean.ApiBean;
+import retrofit3.annotation.bean.MethodAnnotationBean;
+import retrofit3.annotation.bean.parameter.ParaAnnotationBean;
 import retrofit3.call.OkHttpCall;
 import retrofit3.call.adapter.CallAdapter;
 import retrofit3.converter.builtin.BuiltInConverters;
@@ -145,7 +147,7 @@ public final class Retrofit {
 
     /**
      * Returns a list of the factories tried when creating a
-     * {@linkplain #callAdapter(Class, Class[], Class, Class[], Annotation[])} call adapter}.
+     * {@linkplain #callAdapter(Class, Class[], Class, Class[], MethodAnnotationBean)} call adapter}.
      */
     public List<CallAdapter.Factory> callAdapterFactories() {
         return adapterFactories;
@@ -158,8 +160,8 @@ public final class Retrofit {
      * @throws IllegalArgumentException if no call adapter available for {@code type}.
      */
     public CallAdapter<?> callAdapter(Class rawReturnType, Class[] returnTypeArguments, Class responseType,
-                                      Class[] responseTypeArguments, Annotation[] annotations) {
-        return nextCallAdapter(null, rawReturnType, returnTypeArguments, responseType, responseTypeArguments, annotations);
+                                      Class[] responseTypeArguments, MethodAnnotationBean methodAnnotationBean) {
+        return nextCallAdapter(null, rawReturnType, returnTypeArguments, responseType, responseTypeArguments, methodAnnotationBean);
     }
 
     /**
@@ -169,14 +171,14 @@ public final class Retrofit {
      * @throws IllegalArgumentException if no call adapter available for {@code type}.
      */
     public CallAdapter<?> nextCallAdapter(CallAdapter.Factory skipPast, Class rawReturnType, Class[] returnTypeArguments,
-                                          Class responseType, Class[] responseTypeArguments, Annotation[] annotations) {
+                                          Class responseType, Class[] responseTypeArguments, MethodAnnotationBean methodAnnotationBean) {
         checkNotNull(rawReturnType, "returnType == null");
-        checkNotNull(annotations, "annotations == null");
+        checkNotNull(methodAnnotationBean, "methodAnnotationBean == null");
 
         int start = adapterFactories.indexOf(skipPast) + 1;
         for (int i = start, count = adapterFactories.size(); i < count; i++) {
             CallAdapter<?> adapter = adapterFactories.get(i).get(rawReturnType, returnTypeArguments, responseType,
-                    responseTypeArguments, annotations, this);
+                    responseTypeArguments, methodAnnotationBean, this);
             if (adapter != null) {
                 return adapter;
             }
@@ -210,8 +212,8 @@ public final class Retrofit {
      * @throws IllegalArgumentException if no converter available for {@code type}.
      */
     public <T> Converter<T, RequestBody> requestBodyConverter(Class type,
-                                                              Annotation[] parameterAnnotations, Annotation[] methodAnnotations) {
-        return nextRequestBodyConverter(null, type, parameterAnnotations, methodAnnotations);
+                                                              ParaAnnotationBean[]paraAnnotationBeans, MethodAnnotationBean methodAnnotationBean) {
+        return nextRequestBodyConverter(null, type, paraAnnotationBeans, methodAnnotationBean);
     }
 
     /**
@@ -221,16 +223,16 @@ public final class Retrofit {
      * @throws IllegalArgumentException if no converter available for {@code type}.
      */
     public <T> Converter<T, RequestBody> nextRequestBodyConverter(Converter.Factory skipPast,
-                                                                  Class type, Annotation[] parameterAnnotations, Annotation[] methodAnnotations) {
+                                                                  Class type, ParaAnnotationBean[]paraAnnotationBeans, MethodAnnotationBean methodAnnotationBean) {
         checkNotNull(type, "type == null");
-        checkNotNull(parameterAnnotations, "parameterAnnotations == null");
-        checkNotNull(methodAnnotations, "methodAnnotations == null");
+        checkNotNull(paraAnnotationBeans, "paraAnnotationBeans == null");
+        checkNotNull(methodAnnotationBean, "methodAnnotationBean == null");
 
         int start = converterFactories.indexOf(skipPast) + 1;
         for (int i = start, count = converterFactories.size(); i < count; i++) {
             Converter.Factory factory = converterFactories.get(i);
             Converter<?, RequestBody> converter =
-                    factory.requestBodyConverter(type, parameterAnnotations, methodAnnotations, this);
+                    factory.requestBodyConverter(type, paraAnnotationBeans, methodAnnotationBean, this);
             if (converter != null) {
                 //noinspection unchecked
                 return (Converter<T, RequestBody>) converter;
@@ -260,8 +262,8 @@ public final class Retrofit {
      *
      * @throws IllegalArgumentException if no converter available for {@code type}.
      */
-    public <T> Converter<ResponseBody, T> responseBodyConverter(Class responseType, Annotation[] annotations) {
-        return nextResponseBodyConverter(null, responseType, annotations);
+    public <T> Converter<ResponseBody, T> responseBodyConverter(Class responseType, MethodAnnotationBean methodAnnotationBean) {
+        return nextResponseBodyConverter(null, responseType, methodAnnotationBean);
     }
 
     /**
@@ -271,14 +273,14 @@ public final class Retrofit {
      * @throws IllegalArgumentException if no converter available for {@code type}.
      */
     public <T> Converter<ResponseBody, T> nextResponseBodyConverter(Converter.Factory skipPast,
-                                                                    Class responseType, Annotation[] annotations) {
+                                                                    Class responseType,MethodAnnotationBean methodAnnotationBean) {
         checkNotNull(responseType, "type == null");
-        checkNotNull(annotations, "annotations == null");
+        checkNotNull(methodAnnotationBean, "methodAnnotationBean == null");
 
         int start = converterFactories.indexOf(skipPast) + 1;
         for (int i = start, count = converterFactories.size(); i < count; i++) {
             Converter<ResponseBody, ?> converter =
-                    converterFactories.get(i).responseBodyConverter(responseType, annotations, this);
+                    converterFactories.get(i).responseBodyConverter(responseType, methodAnnotationBean, this);
             if (converter != null) {
                 //noinspection unchecked
                 return (Converter<ResponseBody, T>) converter;
@@ -307,13 +309,13 @@ public final class Retrofit {
      * {@linkplain #converterFactories() factories}.
      * 由于GsonConverterFactory并未实现stringConverter(...),所以这里其实获得的string converter其实是BuiltInConverters提供的
      */
-    public <T> Converter<T, String> stringConverter(Class type, Annotation[] annotations) {
+    public <T> Converter<T, String> stringConverter(Class type, ParaAnnotationBean[]paraAnnotationBeans) {
         checkNotNull(type, "type == null");
-        checkNotNull(annotations, "annotations == null");
+        checkNotNull(paraAnnotationBeans, "paraAnnotationBeans == null");
 
         for (int i = 0, count = converterFactories.size(); i < count; i++) {
             Converter<?, String> converter =
-                    converterFactories.get(i).stringConverter(type, annotations, this);
+                    converterFactories.get(i).stringConverter(type, paraAnnotationBeans, this);
             if (converter != null) {
                 //noinspection unchecked
                 return (Converter<T, String>) converter;

@@ -6,7 +6,7 @@ import retrofit3.annotation.bean.AnnotationBean;
 /**
  * Created by allen on 16-9-2.
  */
-public interface MethodAnnotationBean extends AnnotationBean {
+public interface CustomMethodAnnotationBean extends AnnotationBean {
 
     int DELETE = 0x1;
     int GET = 0x2;

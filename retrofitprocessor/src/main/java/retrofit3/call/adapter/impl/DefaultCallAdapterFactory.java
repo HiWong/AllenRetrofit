@@ -1,6 +1,7 @@
 package retrofit3.call.adapter.impl;
 import java.lang.annotation.Annotation;
 import retrofit3.Retrofit;
+import retrofit3.annotation.bean.MethodAnnotationBean;
 import retrofit3.call.Call;
 import retrofit3.call.adapter.CallAdapter;
 
@@ -13,7 +14,8 @@ public final class DefaultCallAdapterFactory extends CallAdapter.Factory {
     public static final CallAdapter.Factory INSTANCE = new DefaultCallAdapterFactory();
 
     @Override
-    public CallAdapter<?> get(Class rawReturnType, Class[] returnTypeArguments, final Class responseType, Class[] responseTypeArguments, Annotation[] annotations, Retrofit retrofit) {
+    public CallAdapter<?> get(Class rawReturnType, Class[] returnTypeArguments, final Class responseType,
+                              Class[] responseTypeArguments, MethodAnnotationBean methodAnnotationBean, Retrofit retrofit) {
         if (rawReturnType != Call.class) {
             return null;
         }

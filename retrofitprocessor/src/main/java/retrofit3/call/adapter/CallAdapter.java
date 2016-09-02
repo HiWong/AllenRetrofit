@@ -3,6 +3,7 @@ package retrofit3.call.adapter;
 import java.lang.annotation.Annotation;
 
 import retrofit3.Retrofit;
+import retrofit3.annotation.bean.MethodAnnotationBean;
 import retrofit3.call.Call;
 
 /**
@@ -18,8 +19,9 @@ public interface CallAdapter<T> {
         //public abstract CallAdapter<?>get(Class returnType, Annotation[]annotations, Retrofit retrofit);
         //public abstract CallAdapter<?>get(Class rawReturnType,Class responseType,Annotation[]annotations,Retrofit retrofit);
         //public abstract CallAdapter<?>get(Class rawReturnType,Class responseType,Class[]responseTypeArguments,Annotation[]annotations,Retrofit retrofit);
-        public abstract CallAdapter<?>get(Class rawReturnType,Class[]returnTypeArguments,Class responseType,
-                                          Class[]responseTypeArguments,Annotation[]annotations,Retrofit retrofit);
+        public abstract CallAdapter<?>get(Class rawReturnType, Class[]returnTypeArguments, Class responseType,
+                                          Class[]responseTypeArguments, MethodAnnotationBean methodAnnotationBean,
+                                          Retrofit retrofit);
     }
 
 }

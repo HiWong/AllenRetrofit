@@ -3,7 +3,7 @@ package retrofit3.annotation.bean.method;
 /**
  * Created by allen on 16-9-2.
  */
-public class HeadersBean implements MethodAnnotationBean {
+public class HeadersBean implements CustomMethodAnnotationBean {
 
     private String[] value;
 

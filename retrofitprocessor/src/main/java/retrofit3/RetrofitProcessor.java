@@ -647,6 +647,7 @@ public class RetrofitProcessor extends AbstractProcessor {
         String[][]parameterTypeArgumentsNameArray=new String[parameterSize][];
         Annotation[][]parameterAnnotationsArray=new Annotation[parameterSize][];
 
+
         for(int i=0;i<parameterSize;++i){
             VariableElement parameterElement=parameterElements.get(i);
 
@@ -679,7 +680,6 @@ public class RetrofitProcessor extends AbstractProcessor {
 
     private void parseParameterAnnotations(VariableElement variableElement,MethodBean methodBean,Annotation[][]parameterAnnotationsArray,int index){
         //Annotation[][]parameterAnnotationsArray=new Annotation[parameterSize][];
-        int i=0;
         //Annotation[]parameterAnnotations=parameterAnnotationsArray[index];
 
         Class[]annotationClassArray={Url.class,Path.class,Query.class,QueryMap.class,Header.class,Field.class,
@@ -770,6 +770,9 @@ public class RetrofitProcessor extends AbstractProcessor {
                 return;
             }
             methodBean.setFormEncoded(true);
+        }
+        if(methodElement.getAnnotation(Streaming.class)!=null){
+            methodBean.setStreaming(true);
         }
         /*
         if(methodAnnotations.size()<1){

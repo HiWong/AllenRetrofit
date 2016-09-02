@@ -13,6 +13,8 @@ import javax.annotation.processing.Messager;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
 
+import retrofit3.annotation.bean.parameter.ParaAnnotationBean;
+
 /**
  * Created by allen on 16-8-31.
  */
@@ -24,13 +26,14 @@ public class MethodBean implements Serializable{
 
 
 
-
     private String methodDeclaration;
     //如setVolume这样
     private String methodName;
     //private Annotation[]methodAnnotations;
     //注意有的方法是没有参数的
-    private Annotation[][]parameterAnnotationsArray;
+    //private Annotation[][]parameterAnnotationsArray;
+    private ParaAnnotationBean[][]parameterAnnotationBeansArray;
+
     private List<String>parameterNames=new ArrayList<>();
     private String[]parameterTypeNames;
     private String[][]parameterTypeArgumentsNameArray;
@@ -46,6 +49,7 @@ public class MethodBean implements Serializable{
     private String responseTypeName;
     private String[]responseTypeArgumentsName;
 
+    ///////start of method annotations related///////////////
     private String httpMethod;
     private boolean hasBody;
     private boolean isFormEncoded;
@@ -53,6 +57,8 @@ public class MethodBean implements Serializable{
     private String relativeUrl;
     private Set<String>relativeUrlParamNames;
     private String[]headersValue;
+    private boolean streaming=false;
+    ///////end of method annotations related//////////////////
 
     /*
     public Annotation[] getMethodAnnotations() {
@@ -121,12 +127,12 @@ public class MethodBean implements Serializable{
         this.returnTypeArgumentsName = returnTypeArgumentsName;
     }
 
-    public Annotation[][] getParameterAnnotationsArray() {
-        return parameterAnnotationsArray;
+    public ParaAnnotationBean[][] getParameterAnnotationBeansArray() {
+        return parameterAnnotationBeansArray;
     }
 
-    public void setParameterAnnotationsArray(Annotation[][] parameterAnnotationsArray) {
-        this.parameterAnnotationsArray = parameterAnnotationsArray;
+    public void setParameterAnnotationBeansArray(ParaAnnotationBean[][] parameterAnnotationBeansArray) {
+        this.parameterAnnotationBeansArray = parameterAnnotationBeansArray;
     }
 
     public TypeMirror getReturnTypeMirror() {
@@ -273,5 +279,11 @@ public class MethodBean implements Serializable{
         messager.printMessage(Diagnostic.Kind.ERROR,message);
     }
 
+    public boolean isStreaming() {
+        return streaming;
+    }
 
+    public void setStreaming(boolean streaming) {
+        this.streaming = streaming;
+    }
 }

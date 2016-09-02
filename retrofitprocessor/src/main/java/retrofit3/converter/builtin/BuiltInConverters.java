@@ -8,6 +8,8 @@ import okhttp3.ResponseBody;
 import retrofit3.Converter;
 import retrofit3.Retrofit;
 import retrofit3.Utils;
+import retrofit3.annotation.bean.MethodAnnotationBean;
+import retrofit3.annotation.bean.parameter.ParaAnnotationBean;
 import retrofit3.annotation.http.Streaming;
 
 /**
@@ -16,9 +18,10 @@ import retrofit3.annotation.http.Streaming;
 public class BuiltInConverters extends Converter.Factory{
 
     @Override
-    public Converter<ResponseBody, ?> responseBodyConverter(Class responseType, Annotation[] annotations, Retrofit retrofit) {
+    public Converter<ResponseBody, ?> responseBodyConverter(Class responseType, MethodAnnotationBean methodAnnotationBean, Retrofit retrofit) {
         if(responseType==ResponseBody.class){
-            if(Utils.isAnnotationPresent(annotations,Streaming.class)){
+            //if(Utils.isAnnotationPresent(methodAnnotationBean,Streaming.class)){
+            if(methodAnnotationBean.isStreaming()){
                 return StreamingResponseBodyConverter.INSTANCE;
             }
             return BufferingResponseBodyConverter.INSTANCE;
@@ -30,7 +33,8 @@ public class BuiltInConverters extends Converter.Factory{
     }
 
     @Override
-    public Converter<?, RequestBody> requestBodyConverter(Class parameterType, Annotation[] parameterAnnotations, Annotation[] methodAnnotations, Retrofit retrofit) {
+    public Converter<?, RequestBody> requestBodyConverter(Class parameterType, ParaAnnotationBean[]paraAnnotationBeans,
+                                                          MethodAnnotationBean methodAnnotationBean, Retrofit retrofit) {
         if(RequestBody.class.isAssignableFrom(parameterType)){
             return RequestBodyConverter.INSTANCE;
         }
@@ -38,7 +42,7 @@ public class BuiltInConverters extends Converter.Factory{
     }
 
     @Override
-    public Converter<?, String> stringConverter(Class parameterType, Annotation[] annotations, Retrofit retrofit) {
+    public Converter<?, String> stringConverter(Class parameterType, ParaAnnotationBean[]paraAnnotationBeans, Retrofit retrofit) {
         if(parameterType==String.class){
             return ToStringConverter.INSTANCE;
         }

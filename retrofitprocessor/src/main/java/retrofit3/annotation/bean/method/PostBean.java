@@ -3,7 +3,7 @@ package retrofit3.annotation.bean.method;
 /**
  * Created by allen on 16-9-2.
  */
-public class PostBean implements MethodAnnotationBean {
+public class PostBean implements CustomMethodAnnotationBean {
 
     private String value = "";
 

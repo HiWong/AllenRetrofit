@@ -10,6 +10,8 @@ import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import retrofit3.Converter;
 import retrofit3.Retrofit;
+import retrofit3.annotation.bean.MethodAnnotationBean;
+import retrofit3.annotation.bean.parameter.ParaAnnotationBean;
 
 /**
  * A {@linkplain Converter.Factory converter} which uses Gson for JSON.
@@ -44,7 +46,7 @@ public final class GsonConverterFactory extends Converter.Factory {
     }
 
     @Override
-    public Converter<ResponseBody, ?> responseBodyConverter(Class responseType, Annotation[] annotations,
+    public Converter<ResponseBody, ?> responseBodyConverter(Class responseType, MethodAnnotationBean methodAnnotationBean,
                                                             Retrofit retrofit) {
         TypeAdapter<?> adapter = gson.getAdapter(TypeToken.get(responseType));
         return new GsonResponseBodyConverter<>(gson, adapter);
@@ -52,7 +54,8 @@ public final class GsonConverterFactory extends Converter.Factory {
 
     @Override
     public Converter<?, RequestBody> requestBodyConverter(Class paramerterType,
-                                                          Annotation[] parameterAnnotations, Annotation[] methodAnnotations, Retrofit retrofit) {
+                                                          ParaAnnotationBean[]paraAnnotationBeans,
+                                                          MethodAnnotationBean methodAnnotationBean, Retrofit retrofit) {
         TypeAdapter<?> adapter = gson.getAdapter(TypeToken.get(paramerterType));
         return new GsonRequestBodyConverter<>(gson, adapter);
     }

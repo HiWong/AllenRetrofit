@@ -3,7 +3,7 @@ package retrofit3.annotation.bean.method;
 /**
  * Created by allen on 16-9-2.
  */
-public class HttpBean implements MethodAnnotationBean {
+public class HttpBean implements CustomMethodAnnotationBean {
 
     private String path = "";
     private boolean hasBody = false;

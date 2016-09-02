@@ -17,7 +17,19 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import retrofit3.annotation.bean.ApiBean;
+import retrofit3.annotation.bean.MethodAnnotationBean;
 import retrofit3.annotation.bean.MethodBean;
+import retrofit3.annotation.bean.parameter.BodyBean;
+import retrofit3.annotation.bean.parameter.FieldBean;
+import retrofit3.annotation.bean.parameter.FieldMapBean;
+import retrofit3.annotation.bean.parameter.HeaderBean;
+import retrofit3.annotation.bean.parameter.ParaAnnotationBean;
+import retrofit3.annotation.bean.parameter.PartBean;
+import retrofit3.annotation.bean.parameter.PartMapBean;
+import retrofit3.annotation.bean.parameter.PathBean;
+import retrofit3.annotation.bean.parameter.QueryBean;
+import retrofit3.annotation.bean.parameter.QueryMapBean;
+import retrofit3.annotation.bean.parameter.UrlBean;
 import retrofit3.annotation.http.Body;
 import retrofit3.annotation.http.DELETE;
 import retrofit3.annotation.http.Field;
@@ -116,9 +128,13 @@ public final class ServiceMethod<T> {
         final String methodDeclaration;
         //final Annotation[] methodAnnotations;
         //有一组参数的Annotation,而每个参数可能有多个Annotation,所以是二维数组
-        final Annotation[][] parameterAnnotationsArray;
+        //final Annotation[][] parameterAnnotationsArray;
+        final ParaAnnotationBean[][]parameterAnnotationBeansArray;
+
         final Class[] parameterTypes;
         final Class[][] parameterTypeArgumentsArray;
+
+        final String[]headersValue;
 
         final Class rawReturnType;
         final Class[] returnTypeArguments;
@@ -136,6 +152,8 @@ public final class ServiceMethod<T> {
         Headers headers;
         MediaType contentType;
         Set<String> relativeUrlParamNames;
+
+        private MethodAnnotationBean methodAnnotationBean=new MethodAnnotationBean();
         /////////////////////end of method annotations related//////////////
 
         //////////////start of parameter annotations related///////////////
@@ -163,7 +181,7 @@ public final class ServiceMethod<T> {
 
         public Builder(Retrofit retrofit, String apiName, String methodDeclaration, Class rawReturnType,
                        Class[] returnTypeArguments, Class responseType, Class[] responseTypeArguments,
-                       Annotation[] methodAnnotations, Annotation[][] parameterAnnotationsArray,
+                       String[]headersValue, ParaAnnotationBean[][]parameterAnnotationBeansArray,
                        Class[] parameterTypes, Class[][] parameterTypeArguments) {
             this.retrofit = retrofit;
             ServiceMethod.apiName = apiName;
@@ -172,8 +190,9 @@ public final class ServiceMethod<T> {
             this.returnTypeArguments = returnTypeArguments;
             this.responseType = responseType;
             this.responseTypeArguments = responseTypeArguments;
+            this.headersValue=headersValue;
             //this.methodAnnotations = methodAnnotations;
-            this.parameterAnnotationsArray = parameterAnnotationsArray;
+            this.parameterAnnotationBeansArray=parameterAnnotationBeansArray;
             this.parameterTypes = parameterTypes;
             this.parameterTypeArgumentsArray = parameterTypeArguments;
         }
@@ -202,9 +221,12 @@ public final class ServiceMethod<T> {
             }
             responseConverter = createResponseConverter();
 
+            /*
             for (Annotation annotation : methodAnnotations) {
                 parseMethodAnnotation(annotation);
             }
+            */
+            headers=parseHeaders(headersValue);
 
             if (httpMethod == null) {
                 throw methodError("HTTP method annotation is required (e.g., @GET, @POST, etc.).");
@@ -220,15 +242,20 @@ public final class ServiceMethod<T> {
                 }
             }
 
-            int parameterCount = parameterAnnotationsArray.length;
+            //int parameterCount = parameterAnnotationsArray.length;
+            int parameterCount=parameterAnnotationBeansArray.length;
             parameterHandlers = new ParameterHandler<?>[parameterCount];
             for (int i = 0; i < parameterCount; ++i) {
                 Class parameterType = parameterTypes[i];
+                /*
                 Annotation[] parameterAnnotations = parameterAnnotationsArray[i];
                 if (parameterAnnotations == null) {
                     throw parameterError(i, "No Retrofit annotation found.");
                 }
-                parameterHandlers[i] = parseParameter(i, parameterType, parameterTypeArgumentsArray[i], parameterAnnotations);
+                */
+                ParaAnnotationBean[]paraAnnotationBeans=parameterAnnotationBeansArray[i];
+
+                parameterHandlers[i] = parseParameter(i, parameterType, parameterTypeArgumentsArray[i], paraAnnotationBeans);
             }
 
             if (relativeUrl == null && !gotUrl) {
@@ -243,50 +270,10 @@ public final class ServiceMethod<T> {
             return new ServiceMethod<>(this);
         }
 
-        private void parseMethodAnnotation(Annotation annotation) {
-            if (annotation instanceof DELETE) {
-                parseHttpMethodAndPath("DELETE", ((DELETE) annotation).value(), false);
-            } else if (annotation instanceof GET) {
-                parseHttpMethodAndPath("GET", ((GET) annotation).value(), false);
-            } else if (annotation instanceof HEAD) {
-                parseHttpMethodAndPath("HEAD", ((HEAD) annotation).value(), false);
-                if (!Void.class.equals(responseType)) {
-                    throw methodError("HEAD method must use Void as response type.");
-                }
-            } else if (annotation instanceof PATCH) {
-                parseHttpMethodAndPath("PATCH", ((PATCH) annotation).value(), true);
-            } else if (annotation instanceof POST) {
-                parseHttpMethodAndPath("POST", ((POST) annotation).value(), true);
-            } else if (annotation instanceof PUT) {
-                parseHttpMethodAndPath("PUT", ((PUT) annotation).value(), true);
-            } else if (annotation instanceof OPTIONS) {
-                parseHttpMethodAndPath("OPTIONS", ((OPTIONS) annotation).value(), false);
-            } else if (annotation instanceof HTTP) {
-                HTTP http = (HTTP) annotation;
-                parseHttpMethodAndPath(http.method(), http.path(), http.hasBody());
-            } else if (annotation instanceof retrofit3.annotation.http.Headers) {
-                String[] headersToParse = ((retrofit3.annotation.http.Headers) annotation).value();
-                if (headersToParse.length == 0) {
-                    throw methodError("@Headers annotation is empty.");
-                }
-                headers = parseHeaders(headersToParse);
-            } else if (annotation instanceof Multipart) {
-                if (isFormEncoded) {
-                    throw methodError("Only one encoding annotation is allowed.");
-                }
-                isMultipart = true;
-            } else if (annotation instanceof FormUrlEncoded) {
-                if (isMultipart) {
-                    throw methodError("Only one encoding annotation is allowed.");
-                }
-                isFormEncoded = true;
-            }
-        }
-
-        private ParameterHandler<?> parseParameter(int i, Class parameterType, Class[] paraTypeArguments, Annotation[] annotations) {
+        private ParameterHandler<?> parseParameter(int i, Class parameterType, Class[] paraTypeArguments, ParaAnnotationBean[]paraAnnotationBeans) {
             ParameterHandler<?> result = null;
-            for (Annotation annotation : annotations) {
-                ParameterHandler<?> annotationAction = parseParameterAnnotation(i, parameterType, paraTypeArguments, annotations, annotation);
+            for (ParaAnnotationBean bean:paraAnnotationBeans) {
+                ParameterHandler<?> annotationAction = parseParameterAnnotation(i, parameterType, paraTypeArguments, paraAnnotationBeans, bean);
                 if (annotationAction == null) {
                     continue;
                 }
@@ -305,34 +292,34 @@ public final class ServiceMethod<T> {
         }
 
         private ParameterHandler<?> parseParameterAnnotation(int i, Class parameterType, Class[] paraTypeArguments,
-                                                             Annotation[] annotations, Annotation annotation) {
-            if (annotation instanceof Url) {
+                                                             ParaAnnotationBean[]paraAnnotationBeans, ParaAnnotationBean bean) {
+            if (bean instanceof UrlBean) {
                 return parseUrl(i, parameterType);
-            } else if (annotation instanceof Path) {
-                return parsePath(i, parameterType, annotations, annotation);
-            } else if (annotation instanceof Query) {
-                return parseQuery(i, parameterType, paraTypeArguments, annotations, annotation);
-            } else if (annotation instanceof QueryMap) {
-                return parseQueryMap(i, parameterType, paraTypeArguments, annotations, annotation);
-            } else if (annotation instanceof Header) {
-                return parseHeader(i, parameterType, paraTypeArguments, annotations, annotation);
-            } else if (annotation instanceof Field) {
-                return parseField(i, parameterType, paraTypeArguments, annotations, annotation);
-            } else if (annotation instanceof FieldMap) {
-                return parseFieldMap(i, parameterType, paraTypeArguments, annotations, annotation);
-            } else if (annotation instanceof Part) {
-                return parsePart(i, parameterType, paraTypeArguments, annotations, annotation);
-            } else if (annotation instanceof PartMap) {
-                return parsePartMap(i, parameterType, paraTypeArguments, annotations, annotation);
-            } else if (annotation instanceof Body) {
-                return parseBody(i, parameterType, paraTypeArguments, annotations, annotation);
+            } else if (bean instanceof PathBean) {
+                return parsePath(i, parameterType, paraAnnotationBeans, bean);
+            } else if (bean instanceof QueryBean) {
+                return parseQuery(i, parameterType, paraTypeArguments, paraAnnotationBeans, bean);
+            } else if (bean instanceof QueryMapBean) {
+                return parseQueryMap(i, parameterType, paraTypeArguments,  paraAnnotationBeans, bean);
+            } else if (bean instanceof HeaderBean) {
+                return parseHeader(i, parameterType, paraTypeArguments,  paraAnnotationBeans, bean);
+            } else if (bean instanceof FieldBean) {
+                return parseField(i, parameterType, paraTypeArguments,  paraAnnotationBeans, bean);
+            } else if (bean instanceof FieldMapBean) {
+                return parseFieldMap(i, parameterType, paraTypeArguments,paraAnnotationBeans, bean);
+            } else if (bean instanceof PartBean) {
+                return parsePart(i, parameterType, paraTypeArguments, paraAnnotationBeans, bean);
+            } else if (bean instanceof PartMapBean) {
+                return parsePartMap(i, parameterType, paraTypeArguments, paraAnnotationBeans, bean);
+            } else if (bean instanceof BodyBean) {
+                return parseBody(i, parameterType, paraTypeArguments, paraAnnotationBeans);
             }
 
             return null;
         }
 
         private ParameterHandler<?> parseBody(int i, Class parameterType, Class[] paraTypeArguments,
-                                              Annotation[] annotations, Annotation annotation) {
+                                              ParaAnnotationBean[]paraAnnotationBeans) {
             if (isFormEncoded || isMultipart) {
                 throw parameterError(i, "@Body parameters cannot be used with form or multi-part encoding.");
             }
@@ -342,7 +329,7 @@ public final class ServiceMethod<T> {
 
             Converter<?, RequestBody> converter;
             try {
-                converter = retrofit.requestBodyConverter(parameterType, annotations, methodAnnotations);
+                converter = retrofit.requestBodyConverter(parameterType, paraAnnotationBeans, methodAnnotationBean);
             } catch (RuntimeException e) {
                 //Wide exception reange because factories are user code.
                 throw parameterError(e, i, "Unable to create @Body converter for %s", parameterType);
@@ -352,7 +339,7 @@ public final class ServiceMethod<T> {
         }
 
         private ParameterHandler<?> parsePartMap(int i, Class parameterType, Class[] paraTypeArguments,
-                                                 Annotation[] annotations, Annotation annotation) {
+                                                 ParaAnnotationBean[]paraAnnotationBeans, ParaAnnotationBean paraBean) {
             if (!isMultipart) {
                 throw parameterError(i, "@PartMap parameters can only be used with multipart encoding.");
             }
@@ -374,21 +361,22 @@ public final class ServiceMethod<T> {
                         + "Use @Part List<Part> or a different value type instead.");
             }
 
-            Converter<?, RequestBody> valueConverter = retrofit.requestBodyConverter(valueType, annotations, methodAnnotations);
+            Converter<?, RequestBody> valueConverter = retrofit.requestBodyConverter(valueType, paraAnnotationBeans, methodAnnotationBean);
 
-            PartMap partMap = (PartMap) annotation;
-            return new ParameterHandler.PartMap<>(valueConverter, partMap.encoding());
+            //PartMap partMap = (PartMap) annotation;
+            return new ParameterHandler.PartMap<>(valueConverter, ((PartMapBean)paraBean).getEncoding());
         }
 
         private ParameterHandler<?> parsePart(int i, Class parameterType, Class[] paraTypeArguments,
-                                              Annotation[] annotations, Annotation annotation) {
+                                              ParaAnnotationBean[]paraAnnotationBeans, ParaAnnotationBean paraBean) {
             if (!isMultipart) {
                 throw parameterError(i, "@Part parameters can only be used with multipart encoding.");
             }
-            Part part = (Part) annotation;
+            //Part part = (Part) annotation;
+            PartBean partBean=(PartBean)paraBean;
             gotPart = true;
 
-            String partName = part.value();
+            String partName = partBean.getValue();
             if (partName.isEmpty()) {
                 if (!MultipartBody.Part.class.isAssignableFrom(parameterType)) {
                     throw parameterError(i, "@Part annotation must supply a name or use MultipartBody.Part parameter type.");
@@ -396,7 +384,7 @@ public final class ServiceMethod<T> {
                 return ParameterHandler.RawPart.INSTANCE;
             } else {
                 Headers headers = Headers.of("Content-Disposition", "form-data; name=\"" + partName + "\"",
-                        "Content-Transfer-Encoding", part.encoding());
+                        "Content-Transfer-Encoding", partBean.getEncoding());
                 if (Iterable.class.isAssignableFrom(parameterType)) {
                     if (null == paraTypeArguments || paraTypeArguments.length == 0) {
                         throw parameterError(i, parameterType.getSimpleName()
@@ -405,24 +393,24 @@ public final class ServiceMethod<T> {
                                 + "<String>)");
                     }
                     Class iterableType = paraTypeArguments[0];
-                    Converter<?, RequestBody> converter = retrofit.requestBodyConverter(iterableType, annotations, methodAnnotations);
+                    Converter<?, RequestBody> converter = retrofit.requestBodyConverter(iterableType, paraAnnotationBeans,methodAnnotationBean);
                     return new ParameterHandler.Part<>(headers, converter).iterable();
                 } else if (parameterType.isArray()) {
                     Class<?> arrayComponentType = boxIfPrimitive(parameterType.getComponentType());
-                    Converter<?, RequestBody> converter = retrofit.requestBodyConverter(arrayComponentType, annotations, methodAnnotations);
+                    Converter<?, RequestBody> converter = retrofit.requestBodyConverter(arrayComponentType,paraAnnotationBeans, methodAnnotationBean);
                     return new ParameterHandler.Part<>(headers, converter).array();
                 } else if (MultipartBody.Part.class.isAssignableFrom(parameterType)) {
                     throw parameterError(i, "@Part parameters using the MultipartBody.Part must not "
                             + "include a part name in the annotation.");
                 } else {
-                    Converter<?, RequestBody> converter = retrofit.requestBodyConverter(parameterType, annotations, methodAnnotations);
+                    Converter<?, RequestBody> converter = retrofit.requestBodyConverter(parameterType,paraAnnotationBeans, methodAnnotationBean);
                     return new ParameterHandler.Part<>(headers, converter);
                 }
             }
         }
 
         private ParameterHandler<?> parseFieldMap(int i, Class parameterType, Class[] paraTypeArguments,
-                                                  Annotation[] annotations, Annotation annotation) {
+                                                  ParaAnnotationBean[]paraAnnotationBeans, ParaAnnotationBean paraBean) {
             if (!isFormEncoded) {
                 throw parameterError(i, "@FieldMap parameters can only be used with form encoding.");
             }
@@ -434,20 +422,21 @@ public final class ServiceMethod<T> {
                 throw parameterError(i, "@FieldMap keys must be of type String: " + keyType);
             }
             Class valueType = paraTypeArguments[1];
-            Converter<?, String> valueConverter = retrofit.stringConverter(valueType, annotations);
+            Converter<?, String> valueConverter = retrofit.stringConverter(valueType, paraAnnotationBeans);
 
             gotField = true;
-            return new ParameterHandler.FieldMap<>(valueConverter, ((FieldMap) annotation).encoded());
+            return new ParameterHandler.FieldMap<>(valueConverter, ((FieldMapBean)paraBean).isEncoded());
         }
 
         private ParameterHandler<?> parseField(int i, Class parameterType, Class[] paraTypeArguments,
-                                               Annotation[] annotations, Annotation annotation) {
+                                               ParaAnnotationBean[]paraAnnotationBeans, ParaAnnotationBean paraBean) {
             if (!isFormEncoded) {
                 throw parameterError(i, "@Field parameters can only be used with form encoding.");
             }
-            Field field = (Field) annotation;
-            String name = field.value();
-            boolean encoded = field.encoded();
+            //Field field = (Field) annotation;
+            FieldBean fieldBean=(FieldBean)paraBean;
+            String name = fieldBean.getValue();
+            boolean encoded = fieldBean.isEncoded();
 
 
             gotField = true;
@@ -460,22 +449,23 @@ public final class ServiceMethod<T> {
                             + "<String>");
                 }
                 Class iterableType = paraTypeArguments[0];
-                Converter<?, String> converter = retrofit.stringConverter(iterableType, annotations);
+                Converter<?, String> converter = retrofit.stringConverter(iterableType, paraAnnotationBeans);
                 return new ParameterHandler.Field<>(name, converter, encoded).iterable();
             } else if (parameterType.isArray()) {
                 Class<?> arrayComponentType = boxIfPrimitive(parameterType.getComponentType());
-                Converter<?, String> converter = retrofit.stringConverter(arrayComponentType, annotations);
+                Converter<?, String> converter = retrofit.stringConverter(arrayComponentType, paraAnnotationBeans);
                 return new ParameterHandler.Field<>(name, converter, encoded).array();
             } else {
-                Converter<?, String> converter = retrofit.stringConverter(parameterType, annotations);
+                Converter<?, String> converter = retrofit.stringConverter(parameterType, paraAnnotationBeans);
                 return new ParameterHandler.Field<>(name, converter, encoded);
             }
         }
 
         private ParameterHandler<?> parseHeader(int i, Class parameterType, Class[] paraTypeArguments,
-                                                Annotation[] annotations, Annotation annotation) {
-            Header header = (Header) annotation;
-            String name = header.value();
+                                                ParaAnnotationBean[]paraAnnotationBeans, ParaAnnotationBean paraBean) {
+            //Header header = (Header) annotation;
+            HeaderBean headerBean=(HeaderBean)paraBean;
+            String name = headerBean.getValue();
 
             if (Iterable.class.isAssignableFrom(parameterType)) {
                 if (null == paraTypeArguments || paraTypeArguments.length == 0) {
@@ -483,20 +473,20 @@ public final class ServiceMethod<T> {
                             + parameterType.getSimpleName() + "<String>");
                 }
                 Class iterableType = paraTypeArguments[0];
-                Converter<?, String> converter = retrofit.stringConverter(iterableType, annotations);
+                Converter<?, String> converter = retrofit.stringConverter(iterableType, paraAnnotationBeans);
                 return new ParameterHandler.Header<>(name, converter).iterable();
             } else if (parameterType.isArray()) {
                 Class<?> arrayComponentType = boxIfPrimitive(parameterType.getComponentType());
-                Converter<?, String> converter = retrofit.stringConverter(arrayComponentType, annotations);
+                Converter<?, String> converter = retrofit.stringConverter(arrayComponentType, paraAnnotationBeans);
                 return new ParameterHandler.Header<>(name, converter).array();
             } else {
-                Converter<?, String> converter = retrofit.stringConverter(parameterType, annotations);
+                Converter<?, String> converter = retrofit.stringConverter(parameterType, paraAnnotationBeans);
                 return new ParameterHandler.Header<>(name, converter);
             }
         }
 
         private ParameterHandler<?> parseQueryMap(int i, Class parameterType, Class[] paraTypeArguments,
-                                                  Annotation[] annotations, Annotation annotation) {
+                                                  ParaAnnotationBean[]paraAnnotationBeans, ParaAnnotationBean paraBean) {
             if (!Map.class.isAssignableFrom(parameterType)) {
                 throw parameterError(i, "@QueryMap parameter type must be Map.");
             }
@@ -509,15 +499,16 @@ public final class ServiceMethod<T> {
                 throw parameterError(i, "@QueryMap keys must be of type String: " + keyType);
             }
             Class valueType = paraTypeArguments[1];
-            Converter<?, String> valueConverter = retrofit.stringConverter(valueType, annotations);
-            return new ParameterHandler.QueryMap<>(valueConverter, ((QueryMap) annotation).encoded());
+            Converter<?, String> valueConverter = retrofit.stringConverter(valueType, paraAnnotationBeans);
+            return new ParameterHandler.QueryMap<>(valueConverter, ((QueryMapBean)paraBean).isEncoded());
         }
 
         private ParameterHandler<?> parseQuery(int i, Class parameterType, Class[] paraTypeArguments,
-                                               Annotation[] annotations, Annotation annotation) {
-            Query query = (Query) annotation;
-            String name = query.value();
-            boolean encoded = query.encoded();
+                                               ParaAnnotationBean[]paraAnnotationBeans, ParaAnnotationBean paraBean) {
+            //Query query = (Query) annotation;
+            QueryBean queryBean=(QueryBean)paraBean;
+            String name = queryBean.getValue();
+            boolean encoded = queryBean.isEncoded();
             gotQuery = true;
             if (Iterable.class.isAssignableFrom(parameterType)) {
                 if (null == paraTypeArguments || paraTypeArguments.length == 0) {
@@ -525,19 +516,19 @@ public final class ServiceMethod<T> {
                             + " must include generic type (e.g.,"
                             + parameterType.getSimpleName() + "<String>)");
                 }
-                Converter<?, String> converter = retrofit.stringConverter(paraTypeArguments[0], annotations);
+                Converter<?, String> converter = retrofit.stringConverter(paraTypeArguments[0], paraAnnotationBeans);
                 return new ParameterHandler.Query<>(name, converter, encoded).iterable();
             } else if (parameterType.isArray()) {
                 Class<?> arrayComponentType = boxIfPrimitive(parameterType.getComponentType());
-                Converter<?, String> converter = retrofit.stringConverter(arrayComponentType, annotations);
+                Converter<?, String> converter = retrofit.stringConverter(arrayComponentType, paraAnnotationBeans);
                 return new ParameterHandler.Query<>(name, converter, encoded).array();
             } else {
-                Converter<?, String> converter = retrofit.stringConverter(parameterType, annotations);
+                Converter<?, String> converter = retrofit.stringConverter(parameterType, paraAnnotationBeans);
                 return new ParameterHandler.Query<>(name, converter, encoded);
             }
         }
 
-        private ParameterHandler<?> parsePath(int i, Class parameterType, Annotation[] annotations, Annotation annotation) {
+        private ParameterHandler<?> parsePath(int i, Class parameterType, ParaAnnotationBean[]paraAnnotationBeans, ParaAnnotationBean paraBean) {
             if (gotQuery) {
                 throw parameterError(i, "A @Path parameter must not come after a @Query.");
             }
@@ -549,12 +540,12 @@ public final class ServiceMethod<T> {
             }
             gotPath = true;
 
-            Path path = (Path) annotation;
-            String name = path.value();
+            //Path path = (Path) annotation;
+            String name = ((PathBean)paraBean).getValue();
             validatePathName(i, name);
 
-            Converter<?, String> converter = retrofit.stringConverter(parameterType, annotations);
-            return new ParameterHandler.Path<>(name, converter, path.encoded());
+            Converter<?, String> converter = retrofit.stringConverter(parameterType,paraAnnotationBeans);
+            return new ParameterHandler.Path<>(name, converter, ((PathBean) paraBean).isEncoded());
         }
 
         private void validatePathName(int i, String name) {
@@ -639,9 +630,9 @@ public final class ServiceMethod<T> {
         }
 
         private Converter<ResponseBody, T> createResponseConverter() {
-            Annotation[] annotations = methodAnnotations;
+            //Annotation[] annotations = methodAnnotations;
             try {
-                return retrofit.responseBodyConverter(responseType, annotations);
+                return retrofit.responseBodyConverter(responseType, methodAnnotationBean);
             } catch (RuntimeException e) {
                 throw methodError(e, "Unable to create converter for %s", responseType);
             }
@@ -653,7 +644,7 @@ public final class ServiceMethod<T> {
             }
             try {
                 return retrofit.callAdapter(rawReturnType, returnTypeArguments, responseType,
-                        responseTypeArguments, methodAnnotations);
+                        responseTypeArguments, methodAnnotationBean);
             } catch (RuntimeException e) { //Wide exception range because factories are user code.
                 throw methodError(e, "Unable ito create call adapter for %s", rawReturnType);
             }

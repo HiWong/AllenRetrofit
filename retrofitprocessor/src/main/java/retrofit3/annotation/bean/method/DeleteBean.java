@@ -3,7 +3,7 @@ package retrofit3.annotation.bean.method;
 /**
  * Created by allen on 16-9-2.
  */
-public class DeleteBean implements MethodAnnotationBean {
+public class DeleteBean implements CustomMethodAnnotationBean {
 
     private String value = "";
 

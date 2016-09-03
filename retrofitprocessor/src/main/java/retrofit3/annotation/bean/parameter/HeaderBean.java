@@ -7,6 +7,10 @@ public class HeaderBean implements ParaAnnotationBean {
 
     private String value;
 
+    public HeaderBean(String value){
+        this.value=value;
+    }
+
     @Override
     public int annotationType() {
         return HEADER;

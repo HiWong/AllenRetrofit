@@ -10,6 +10,10 @@ public class FieldMapBean implements ParaAnnotationBean {
         return FIELDMAP;
     }
 
+    public FieldMapBean(boolean encoded){
+        this.encoded=encoded;
+    }
+
     private boolean encoded=false;
 
     public boolean isEncoded() {

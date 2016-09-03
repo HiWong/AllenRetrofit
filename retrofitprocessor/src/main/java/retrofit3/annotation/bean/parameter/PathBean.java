@@ -8,6 +8,11 @@ public class PathBean implements ParaAnnotationBean {
     private String value;
     private boolean encoded = false;
 
+    public PathBean(String value,boolean encoded){
+        this.value=value;
+        this.encoded=encoded;
+    }
+
     @Override
     public int annotationType() {
         return PATH;

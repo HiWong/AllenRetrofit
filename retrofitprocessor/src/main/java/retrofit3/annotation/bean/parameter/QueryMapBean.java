@@ -7,6 +7,10 @@ public class QueryMapBean implements ParaAnnotationBean {
 
     private boolean encoded = false;
 
+    public QueryMapBean(boolean encoded){
+        this.encoded=encoded;
+    }
+
     @Override
     public int annotationType() {
         return QUERYMAP;

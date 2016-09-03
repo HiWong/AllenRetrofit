@@ -8,6 +8,11 @@ public class PartBean implements ParaAnnotationBean {
     private String value = "";
     private String encoding = "binary";
 
+    public PartBean(String value,String encoding){
+        this.value=value;
+        this.encoding=encoding;
+    }
+
     @Override
     public int annotationType() {
         return PART;

@@ -8,6 +8,11 @@ public class QueryBean implements ParaAnnotationBean {
     private String value;
     private boolean encoded = false;
 
+    public QueryBean(String value,boolean encoded){
+        this.value=value;
+        this.encoded=encoded;
+    }
+
     @Override
     public int annotationType() {
         return QUERY;

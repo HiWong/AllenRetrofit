@@ -7,7 +7,7 @@ import java.util.Set;
  * create a java bean to simplify the constructor of ServiceMethod.Builder
  * Created by allen on 16-9-2.
  */
-public class RawMethodBean implements Serializable{
+public class RawMethodAnnotationBean implements Serializable{
 
     private String httpMethod;
     private boolean hasBody;
@@ -16,6 +16,7 @@ public class RawMethodBean implements Serializable{
     private String relativeUrl;
     private Set<String> relativeUrlParamNames;
     private String[]headersValue;
+    private boolean streaming=false;
 
     public boolean isHasBody() {
         return hasBody;
@@ -71,5 +72,13 @@ public class RawMethodBean implements Serializable{
 
     public void setRelativeUrlParamNames(Set<String> relativeUrlParamNames) {
         this.relativeUrlParamNames = relativeUrlParamNames;
+    }
+
+    public boolean isStreaming() {
+        return streaming;
+    }
+
+    public void setStreaming(boolean streaming) {
+        this.streaming = streaming;
     }
 }

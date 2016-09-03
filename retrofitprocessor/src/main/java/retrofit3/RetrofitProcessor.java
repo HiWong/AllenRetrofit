@@ -1,9 +1,5 @@
 package retrofit3;
-
-import android.text.TextUtils;
-
 import com.google.auto.service.AutoService;
-import com.squareup.javapoet.ArrayTypeName;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.JavaFile;
@@ -13,9 +9,9 @@ import com.squareup.javapoet.TypeSpec;
 import com.squareup.javapoet.TypeVariableName;
 
 import java.io.IOException;
-import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +44,18 @@ import javax.tools.Diagnostic;
 
 import retrofit3.annotation.bean.ApiBean;
 import retrofit3.annotation.bean.MethodBean;
+import retrofit3.annotation.bean.RawMethodAnnotationBean;
+import retrofit3.annotation.bean.parameter.BodyBean;
+import retrofit3.annotation.bean.parameter.FieldBean;
+import retrofit3.annotation.bean.parameter.FieldMapBean;
+import retrofit3.annotation.bean.parameter.HeaderBean;
+import retrofit3.annotation.bean.parameter.ParaAnnotationBean;
+import retrofit3.annotation.bean.parameter.PartBean;
+import retrofit3.annotation.bean.parameter.PartMapBean;
+import retrofit3.annotation.bean.parameter.PathBean;
+import retrofit3.annotation.bean.parameter.QueryBean;
+import retrofit3.annotation.bean.parameter.QueryMapBean;
+import retrofit3.annotation.bean.parameter.UrlBean;
 import retrofit3.annotation.config.BaseConfig;
 import retrofit3.annotation.config.CallAdapterFactories;
 import retrofit3.annotation.config.CallFactory;
@@ -163,6 +171,7 @@ public class RetrofitProcessor extends AbstractProcessor {
         String retrofitManagerPackageName=null;
         //proxyMethodSpecBuilder对应RetrofitManager中的getProxy()方法
         MethodSpec.Builder proxyMethodSpecBuilder=getProxyMethodSpec();
+
         for(Map.Entry<String,ApiBean>entry:apiBeanMap.entrySet()){
             ApiBean bean=entry.getValue();
 
@@ -177,6 +186,8 @@ public class RetrofitProcessor extends AbstractProcessor {
             writeSingleJavaFile(bean,proxyMethodSpecBuilder);
             //RetrofitManager.getInstance().addProxy(bean.getPackageName()+"."+bean.getApiName());
         }
+
+        /*
         if(null!=retrofitManagerBuilder){
             TypeSpec retrofitManagerTypeSpec=retrofitManagerBuilder.addMethod(proxyMethodSpecBuilder.build()).build();
             JavaFile javaFile=JavaFile.builder(retrofitManagerPackageName,retrofitManagerTypeSpec).build();
@@ -186,6 +197,8 @@ public class RetrofitProcessor extends AbstractProcessor {
                 ex.printStackTrace();
             }
         }
+        */
+
 
     }
 
@@ -285,7 +298,6 @@ public class RetrofitProcessor extends AbstractProcessor {
 
         TypeSpec apiProxyType=apiProxyTypeBuilder.build();
 
-
         JavaFile javaFile=JavaFile.builder(bean.getPackageName(),apiProxyType).build();
         try{
             javaFile.writeTo(processingEnv.getFiler());
@@ -295,7 +307,7 @@ public class RetrofitProcessor extends AbstractProcessor {
 
         String canonicalName=bean.getPackageName()+"."+bean.getApiName();
         //At last,we need to add judge
-        proxyMethodSpecBuilder.beginControlFlow("if($S.equals("+CANONICALNAME+")",canonicalName)
+        proxyMethodSpecBuilder.beginControlFlow("if($S.equals($L))",canonicalName,CANONICALNAME)
                 .addStatement("return $T.getInstance()",ClassName.get(bean.getPackageName(),bean.getApiName()+"Proxy"));
 
 
@@ -377,43 +389,33 @@ public class RetrofitProcessor extends AbstractProcessor {
                 methodBuilder.addStatement("responseTypeArguments[$L]=$S",i,responseTypeArguments[i]);
             }
         }
-        //init methodAnnotations
-        /*
-        Annotation[]methodAnnotations=methodBean.getMethodAnnotations();
-        if(null==methodAnnotations||methodAnnotations.length==0){
-            methodBuilder.addStatement("Annotation[]methodAnnotations=null");
-        }else{
-            methodBuilder.addStatement("Annotation[]methodAnnotations=new $T[$L]",Annotation.class,methodAnnotations.length);
-            for(int i=0;i<methodAnnotations.length;++i){
-                methodBuilder.addStatement("methodAnnotations[$L]=$L",i,methodAnnotations[i]);
+
+        methodBuilder.addStatement("RawMethodAnnotationBean rawBean=new $T()", RawMethodAnnotationBean.class);
+        methodBuilder.addStatement("rawBean.setHttpMethod($S)",methodBean.getHttpMethod());
+        methodBuilder.addStatement("rawBean.setHasBody($L)",methodBean.isHasBody());
+        methodBuilder.addStatement("rawBean.setFormEncoded($L)",methodBean.isFormEncoded());
+        methodBuilder.addStatement("rawBean.setMultipart($L)",methodBean.isMultipart());
+        methodBuilder.addStatement("rawBean.setStreaming($L)",methodBean.isStreaming());
+        if(methodBean.getRelativeUrlParamNames()!=null&&methodBean.getRelativeUrlParamNames().size()>0){
+            methodBuilder.addStatement("Set<String>relativeUrlParamNames=new $T<>()",Set.class);
+            Set<String>relativeUrlParamNames=methodBean.getRelativeUrlParamNames();
+            Iterator<String>iter=relativeUrlParamNames.iterator();
+            while(iter.hasNext()){
+                String urlParamName=iter.next();
+                methodBuilder.addStatement("relativeUrlParamNames.add($S)",urlParamName);
             }
+            methodBuilder.addStatement("rawBean.setRelativeUrlParamNames(relativeUrlParamNames)");
         }
-        */
-        methodBuilder.addStatement("$T[]methodAnnotations=$T.getInstance().getMethodAnnotations($S," +
-                "$S)",Annotation.class,RetrofitManager.class,apiBean.getPackageName()+"."+apiBean.getApiName(),methodBean.getMethodDeclaration());
-
-
+        if(methodBean.getHeadersValue()!=null&&methodBean.getHeadersValue().length>0){
+            methodBuilder.addStatement("String[]headersValue=new String[$L]",methodBean.getHeadersValue().length);
+            for(int i=0;i<methodBean.getHeadersValue().length;++i){
+                methodBuilder.addStatement("headersValue[$L]=new String($S)",i,methodBean.getHeadersValue()[i]);
+            }
+            methodBuilder.addStatement("rawBean.setHeadersValue(headersValue)");
+        }
 
         //init parameterAnnotationsArray
-        /*
-        Annotation[][]parameterAnnotaionsArray=methodBean.getParameterAnnotationsArray();
-        if(null==parameterAnnotaionsArray||parameterAnnotaionsArray.length==0){
-            methodBuilder.addStatement("Annotation[][]parameterAnnotationsArray=null");
-        }else{
-            methodBuilder.addStatement("Annotation[][]parameterAnnotationsArray=new Annotation[$L][]",parameterAnnotaionsArray.length);
-            for(int i=0;i<parameterAnnotaionsArray.length;++i){
-                if(parameterAnnotaionsArray[i]==null||parameterAnnotaionsArray[i].length==0){
-                    methodBuilder.addStatement("parameterAnnotationsArray[$L]=null",i);
-                }else{
-                    for(int j=0;j<parameterAnnotaionsArray[i].length;++j){
-                        methodBuilder.addStatement("parameterAnnotationsArray[$L][$L]=$L",i,j,parameterAnnotaionsArray[i][j]);
-                    }
-                }
-            }
-        }
-        */
-        methodBuilder.addStatement("Annotation[][]parameterAnnotationsArray=RetrofitManager.getInstance().getParameterAnnotationsArray($S," +
-                "$S)",apiBean.getPackageName()+"."+apiBean.getApiName(),methodBean.getMethodDeclaration());
+        addParaAnnotationBeansArrayStatement(methodBuilder,methodBean);
 
 
         //init parameterTypes
@@ -444,7 +446,7 @@ public class RetrofitProcessor extends AbstractProcessor {
         }
 
         methodBuilder.addStatement("return retrofit.adapt($S,$S,$L.class,returnTypeArguments,$L.class," +
-                "responseTypeArguments,methodAnnotations,parameterAnnotationsArray,parameterTypes,"+
+                "responseTypeArguments,rawBean,paraAnnotationBeansArray,parameterTypes,"+
                 "parameterTypeArguments,args)",apiBean.getApiName(),methodBean.getMethodDeclaration(),
                 methodBean.getRawReturnTypeName(),methodBean.getResponseTypeName());
 
@@ -453,6 +455,62 @@ public class RetrofitProcessor extends AbstractProcessor {
        return methodBuilder.build();
     }
 
+    private void addParaAnnotationBeansArrayStatement(MethodSpec.Builder methodBuilder,MethodBean methodBean){
+        ParaAnnotationBean[][]paraAnnotationBeansArray=methodBean.getParameterAnnotationBeansArray();
+        if(paraAnnotationBeansArray==null||paraAnnotationBeansArray.length==0){
+            methodBuilder.addStatement("ParaAnnotationBean[][]paraAnnotationBeansArray=null",
+                    ParaAnnotationBean.class);
+        }else{
+            methodBuilder.addStatement("ParaAnnotationBean[][]paraAnnotationBeansArray=new $T[$L][]",
+                    ParaAnnotationBean.class,paraAnnotationBeansArray.length);
+            for(int i=0;i<paraAnnotationBeansArray.length;++i){
+                if(paraAnnotationBeansArray[i].length>0){
+                    methodBuilder.addStatement("paraAnnotationBeansArray[$L]=new $T[$L]",i,
+                            ParaAnnotationBean.class,paraAnnotationBeansArray[i].length);
+                    for(int j=0;j<paraAnnotationBeansArray[i].length;++j){
+                        addSingleParaAnnotationBean(paraAnnotationBeansArray[i][j],methodBuilder,i,j);
+                    }
+                }
+            }
+        }
+    }
+
+    private void addSingleParaAnnotationBean(ParaAnnotationBean paraBean,MethodSpec.Builder methodBuilder,int i,int j){
+        String beanName="tempBean"+i+j;
+        if(paraBean instanceof BodyBean){
+            methodBuilder.addStatement("BodyBean $L=new $T()",beanName,BodyBean.class);
+        }else if(paraBean instanceof FieldBean){
+            FieldBean fieldBean=(FieldBean)paraBean;
+            methodBuilder.addStatement("FieldBean $L=new $T($S,$L)",beanName,FieldBean.class,fieldBean.getValue(),fieldBean.isEncoded());
+        }else if(paraBean instanceof FieldMapBean){
+            FieldMapBean fieldMapBean=(FieldMapBean)paraBean;
+            methodBuilder.addStatement("FieldMapBean $L=new $T($L)",beanName,FieldMapBean.class,fieldMapBean.isEncoded());
+        }else if(paraBean instanceof HeaderBean){
+            HeaderBean headerBean=(HeaderBean)paraBean;
+            methodBuilder.addStatement("HeaderBean $L=new $T($S)",beanName,HeaderBean.class,headerBean.getValue());
+        }else if(paraBean instanceof PartBean){
+            PartBean partBean=(PartBean)paraBean;
+            methodBuilder.addStatement("PartBean $L=new $T($S,$S)",beanName,PartBean.class,partBean.getValue(),partBean.getEncoding());
+        }else if(paraBean instanceof PartMapBean){
+            PartMapBean partMapBean=(PartMapBean)paraBean;
+            methodBuilder.addStatement("PartMapBean $L=new $T($S)",beanName,PartMapBean.class,partMapBean.getEncoding());
+        }else if(paraBean instanceof PathBean){
+            PathBean pathBean=(PathBean)paraBean;
+            methodBuilder.addStatement("PathBean $L=new $T($S,$L)",beanName,PathBean.class,pathBean.getValue(),pathBean.isEncoded());
+        }else if(paraBean instanceof QueryBean){
+            QueryBean queryBean=(QueryBean)paraBean;
+            methodBuilder.addStatement("QueryBean $L=new $T($S,$L)",beanName,QueryBean.class,queryBean.getValue(),queryBean.isEncoded());
+
+        }else if(paraBean instanceof QueryMapBean){
+            QueryMapBean queryMapBean=(QueryMapBean)paraBean;
+            methodBuilder.addStatement("QueryMapBean $L=new $T($L)",beanName,QueryMapBean.class,queryMapBean.isEncoded());
+
+        }else if(paraBean instanceof UrlBean){
+            //UrlBean urlBean=(UrlBean)paraBean;
+            methodBuilder.addStatement("UrlBean $L=new $T()",beanName,UrlBean.class);
+        }
+        methodBuilder.addStatement("paraAnnotationBeansArray[$L][$L]=$L",i,j,beanName);
+    }
 
 
     private void createNewApiProxy(RoundEnvironment roundEnv,Messager messager){
@@ -521,7 +579,7 @@ public class RetrofitProcessor extends AbstractProcessor {
             VariableElement fieldElement=(VariableElement)element;
             parseVariableElement(fieldElement);
             String fieldName=fieldElement.getSimpleName().toString();
-            Object constantValue=fieldElement.getConstantValue();
+            //Object constantValue=fieldElement.getConstantValue();
             TypeElement apiElement=(TypeElement)fieldElement.getEnclosingElement();
             ApiBean apiBean=apiBeanMap.get(apiElement.getQualifiedName().toString());
             if(null!=apiBean){
@@ -598,7 +656,8 @@ public class RetrofitProcessor extends AbstractProcessor {
 
         //因为parseMethodAnnotations()中涉及到responseType,故该方法只能放在parseMethodParameters()之后
         parseMethodAnnotations(methodElement,methodBean);
-        if(TextUtils.isEmpty(methodBean.getHttpMethod())){
+        //在这里出错了,因为用了TextUtils
+        if(isEmpty(methodBean.getHttpMethod())){
             return;
         }
 
@@ -645,13 +704,15 @@ public class RetrofitProcessor extends AbstractProcessor {
         int parameterSize=parameterElements.size();
         String[]parameterTypeNames=new String[parameterSize];
         String[][]parameterTypeArgumentsNameArray=new String[parameterSize][];
-        Annotation[][]parameterAnnotationsArray=new Annotation[parameterSize][];
+        //Annotation[][]parameterAnnotationsArray=new Annotation[parameterSize][];
+        ParaAnnotationBean[][]parameterAnnotationBeansArray=new ParaAnnotationBean[parameterSize][];
 
 
         for(int i=0;i<parameterSize;++i){
             VariableElement parameterElement=parameterElements.get(i);
 
-            parseParameterAnnotations(parameterElement,methodBean,parameterAnnotationsArray,i);
+            parseParameterAnnotations(parameterElement,parameterAnnotationBeansArray,i);
+
             TypeMirror typeMirror=parameterElement.asType();
 
             methodBean.addParameterTypeMirror(typeMirror);
@@ -673,15 +734,51 @@ public class RetrofitProcessor extends AbstractProcessor {
         }
         methodBean.setParameterTypeNames(parameterTypeNames);
         methodBean.setParameterTypeArgumentsNameArray(parameterTypeArgumentsNameArray);
-        methodBean.setParameterAnnotationsArray(parameterAnnotationsArray);
+        methodBean.setParameterAnnotationBeansArray(parameterAnnotationBeansArray);
+        //methodBean.setParameterAnnotationsArray(parameterAnnotationsArray);
 
 
     }
 
-    private void parseParameterAnnotations(VariableElement variableElement,MethodBean methodBean,Annotation[][]parameterAnnotationsArray,int index){
+    private void parseParameterAnnotations(VariableElement variableElement,ParaAnnotationBean[][]parameterAnnotationBeansArray,int index){
         //Annotation[][]parameterAnnotationsArray=new Annotation[parameterSize][];
         //Annotation[]parameterAnnotations=parameterAnnotationsArray[index];
 
+        List<ParaAnnotationBean>paraAnnotationBeanList=new ArrayList<>();
+        if(variableElement.getAnnotation(Body.class)!=null){
+            paraAnnotationBeanList.add(new BodyBean());
+        }else if(variableElement.getAnnotation(Field.class)!=null){
+            Field field=variableElement.getAnnotation(Field.class);
+            paraAnnotationBeanList.add(new FieldBean(field.value(),field.encoded()));
+        }else if(variableElement.getAnnotation(FieldMap.class)!=null){
+            FieldMap fieldMap=variableElement.getAnnotation(FieldMap.class);
+            paraAnnotationBeanList.add(new FieldMapBean(fieldMap.encoded()));
+        }else if(variableElement.getAnnotation(Header.class)!=null){
+            Header header=variableElement.getAnnotation(Header.class);
+            paraAnnotationBeanList.add(new HeaderBean(header.value()));
+        }else if(variableElement.getAnnotation(Part.class)!=null){
+            Part part=variableElement.getAnnotation(Part.class);
+            paraAnnotationBeanList.add(new PartBean(part.value(),part.encoding()));
+        }else if(variableElement.getAnnotation(PartMap.class)!=null){
+            PartMap partMap=variableElement.getAnnotation(PartMap.class);
+            paraAnnotationBeanList.add(new PartMapBean(partMap.encoding()));
+        }else if(variableElement.getAnnotation(Path.class)!=null){
+            Path path=variableElement.getAnnotation(Path.class);
+            paraAnnotationBeanList.add(new PathBean(path.value(),path.encoded()));
+        }else if(variableElement.getAnnotation(Query.class)!=null){
+            Query query=variableElement.getAnnotation(Query.class);
+            paraAnnotationBeanList.add(new QueryBean(query.value(),query.encoded()));
+        }else if(variableElement.getAnnotation(QueryMap.class)!=null){
+            QueryMap queryMap=variableElement.getAnnotation(QueryMap.class);
+            paraAnnotationBeanList.add(new QueryMapBean(queryMap.encoded()));
+        }else if(variableElement.getAnnotation(Url.class)!=null){
+            //Url url=variableElement.getAnnotation(Url.class);
+            paraAnnotationBeanList.add(new UrlBean());
+        }
+        parameterAnnotationBeansArray[index]=new ParaAnnotationBean[paraAnnotationBeanList.size()];
+        paraAnnotationBeanList.toArray(parameterAnnotationBeansArray[index]);
+
+        /*
         Class[]annotationClassArray={Url.class,Path.class,Query.class,QueryMap.class,Header.class,Field.class,
         FieldMap.class,Part.class,PartMap.class,Body.class};
         List<Annotation>annotationList=new ArrayList<>();
@@ -695,7 +792,7 @@ public class RetrofitProcessor extends AbstractProcessor {
         Annotation[]annotationArray=new Annotation[annotationList.size()];
         annotationList.toArray(annotationArray);
         parameterAnnotationsArray[index]=annotationArray;
-        //methodBean.setParameterAnnotationsArray(parameterAnnotationsArray);
+        */
     }
 
     private void parseMethodAnnotations(ExecutableElement methodElement,MethodBean methodBean){

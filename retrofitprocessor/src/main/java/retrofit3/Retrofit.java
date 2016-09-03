@@ -34,6 +34,7 @@ import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import retrofit3.annotation.bean.ApiBean;
 import retrofit3.annotation.bean.MethodAnnotationBean;
+import retrofit3.annotation.bean.RawMethodAnnotationBean;
 import retrofit3.annotation.bean.parameter.ParaAnnotationBean;
 import retrofit3.call.OkHttpCall;
 import retrofit3.call.adapter.CallAdapter;
@@ -110,11 +111,11 @@ public final class Retrofit {
     }
 
     public <T> T adapt(String apiName,String methodDeclaration,Class rawReturnType,Class[]returnTypeArguments,
-                       Class responseType,Class[]responseTypeArguments,Annotation[]methodAnnotations,
-                       Annotation[][]parameterAnnotationsArray,Class[]parameterTypes,Class[][]parameterTypeArguments,
+                       Class responseType,Class[]responseTypeArguments,RawMethodAnnotationBean rawBean,
+                       ParaAnnotationBean[][]paraAnnotationBeansArray,Class[]parameterTypes,Class[][]parameterTypeArguments,
                        Object...args){
         ServiceMethod serviceMethod=new ServiceMethod.Builder(this,apiName,methodDeclaration,rawReturnType,returnTypeArguments,
-                responseType,responseTypeArguments,methodAnnotations,parameterAnnotationsArray,parameterTypes,parameterTypeArguments)
+                responseType,responseTypeArguments,rawBean,paraAnnotationBeansArray,parameterTypes,parameterTypeArguments)
                 .build();
         addServiceMethod(methodDeclaration,serviceMethod);
         return adapt(serviceMethod,args);

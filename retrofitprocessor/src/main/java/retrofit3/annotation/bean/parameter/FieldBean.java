@@ -8,6 +8,11 @@ public class FieldBean implements ParaAnnotationBean {
     private String value;
     private boolean encoded = false;
 
+    public FieldBean(String value,boolean encoded){
+        this.value=value;
+        this.encoded=encoded;
+    }
+
     @Override
     public int annotationType() {
         return FIELD;

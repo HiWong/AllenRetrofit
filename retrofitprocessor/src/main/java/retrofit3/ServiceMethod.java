@@ -19,6 +19,7 @@ import okhttp3.ResponseBody;
 import retrofit3.annotation.bean.ApiBean;
 import retrofit3.annotation.bean.MethodAnnotationBean;
 import retrofit3.annotation.bean.MethodBean;
+import retrofit3.annotation.bean.RawMethodAnnotationBean;
 import retrofit3.annotation.bean.parameter.BodyBean;
 import retrofit3.annotation.bean.parameter.FieldBean;
 import retrofit3.annotation.bean.parameter.FieldMapBean;
@@ -84,13 +85,13 @@ public final class ServiceMethod<T> {
         //actually baseUrl should be static variable of ServiceMethod
         this.baseUrl = builder.retrofit.baseUrl();
         this.responseConverter = builder.responseConverter;
-        this.httpMethod = builder.httpMethod;
-        this.relativeUrl = builder.relativeUrl;
-        this.headers = builder.headers;
-        this.contentType = builder.contentType;
-        this.hasBody = builder.hasBody;
-        this.isFormEncoded = builder.isFormEncoded;
-        this.isMultipart = builder.isMultipart;
+        this.httpMethod = builder.methodAnnotationBean.getHttpMethod();
+        this.relativeUrl = builder.methodAnnotationBean.getRelativeUrl();
+        this.headers = builder.methodAnnotationBean.getHeaders();
+        this.contentType = builder.methodAnnotationBean.getContentType();
+        this.hasBody = builder.methodAnnotationBean.isHasBody();
+        this.isFormEncoded = builder.methodAnnotationBean.isFormEncoded();
+        this.isMultipart = builder.methodAnnotationBean.isMultipart();
         this.parameterHandlers = builder.parameterHandlers;
     }
 
@@ -134,8 +135,6 @@ public final class ServiceMethod<T> {
         final Class[] parameterTypes;
         final Class[][] parameterTypeArgumentsArray;
 
-        final String[]headersValue;
-
         final Class rawReturnType;
         final Class[] returnTypeArguments;
         //responseType其实就是returnTypeArguments[0],而responseTypeArguemtns就是responseType的type arguments
@@ -144,6 +143,7 @@ public final class ServiceMethod<T> {
         final Class[] responseTypeArguments;
 
         ////////////////////start of method annotations related///////////
+        /*
         String httpMethod;
         boolean hasBody;
         boolean isFormEncoded;
@@ -152,8 +152,9 @@ public final class ServiceMethod<T> {
         Headers headers;
         MediaType contentType;
         Set<String> relativeUrlParamNames;
+        */
 
-        private MethodAnnotationBean methodAnnotationBean=new MethodAnnotationBean();
+        final MethodAnnotationBean methodAnnotationBean;
         /////////////////////end of method annotations related//////////////
 
         //////////////start of parameter annotations related///////////////
@@ -181,7 +182,7 @@ public final class ServiceMethod<T> {
 
         public Builder(Retrofit retrofit, String apiName, String methodDeclaration, Class rawReturnType,
                        Class[] returnTypeArguments, Class responseType, Class[] responseTypeArguments,
-                       String[]headersValue, ParaAnnotationBean[][]parameterAnnotationBeansArray,
+                       RawMethodAnnotationBean rawBean, ParaAnnotationBean[][]parameterAnnotationBeansArray,
                        Class[] parameterTypes, Class[][] parameterTypeArguments) {
             this.retrofit = retrofit;
             ServiceMethod.apiName = apiName;
@@ -190,8 +191,7 @@ public final class ServiceMethod<T> {
             this.returnTypeArguments = returnTypeArguments;
             this.responseType = responseType;
             this.responseTypeArguments = responseTypeArguments;
-            this.headersValue=headersValue;
-            //this.methodAnnotations = methodAnnotations;
+            methodAnnotationBean=new MethodAnnotationBean(rawBean);
             this.parameterAnnotationBeansArray=parameterAnnotationBeansArray;
             this.parameterTypes = parameterTypes;
             this.parameterTypeArgumentsArray = parameterTypeArguments;
@@ -226,17 +226,17 @@ public final class ServiceMethod<T> {
                 parseMethodAnnotation(annotation);
             }
             */
-            headers=parseHeaders(headersValue);
+            //headers=parseHeaders(headersValue);
 
-            if (httpMethod == null) {
+            if (methodAnnotationBean.getHttpMethod() == null) {
                 throw methodError("HTTP method annotation is required (e.g., @GET, @POST, etc.).");
             }
 
-            if (!hasBody) {
-                if (isMultipart) {
+            if (!methodAnnotationBean.isHasBody()) {
+                if (!methodAnnotationBean.isMultipart()) {
                     throw methodError("Multipart can only be specified on HTTP methods with request body (e.g., @POST).");
                 }
-                if (isFormEncoded) {
+                if (methodAnnotationBean.isFormEncoded()) {
                     throw methodError("FormUrlEncoded can only be specified on HTTP methods with " +
                             "request body (e.g.,@POST).");
                 }
@@ -258,13 +258,13 @@ public final class ServiceMethod<T> {
                 parameterHandlers[i] = parseParameter(i, parameterType, parameterTypeArgumentsArray[i], paraAnnotationBeans);
             }
 
-            if (relativeUrl == null && !gotUrl) {
-                throw methodError("Missing either @%s URL or @Url parameter.", httpMethod);
+            if (methodAnnotationBean.getRelativeUrl() == null && !gotUrl) {
+                throw methodError("Missing either @%s URL or @Url parameter.", methodAnnotationBean.getHttpMethod());
             }
-            if (!isFormEncoded && !isMultipart && !hasBody && gotBody) {
+            if (!methodAnnotationBean.isFormEncoded() && !methodAnnotationBean.isMultipart() && !methodAnnotationBean.isHasBody() && gotBody) {
                 throw methodError("Non-boddy HTTP method cannot contain @Body.");
             }
-            if (isFormEncoded && !gotField) {
+            if (methodAnnotationBean.isFormEncoded() && !gotField) {
                 throw methodError("Multipart method must contain at least one @Part.");
             }
             return new ServiceMethod<>(this);
@@ -320,7 +320,7 @@ public final class ServiceMethod<T> {
 
         private ParameterHandler<?> parseBody(int i, Class parameterType, Class[] paraTypeArguments,
                                               ParaAnnotationBean[]paraAnnotationBeans) {
-            if (isFormEncoded || isMultipart) {
+            if (methodAnnotationBean.isFormEncoded() || methodAnnotationBean.isMultipart()) {
                 throw parameterError(i, "@Body parameters cannot be used with form or multi-part encoding.");
             }
             if (gotBody) {
@@ -340,7 +340,7 @@ public final class ServiceMethod<T> {
 
         private ParameterHandler<?> parsePartMap(int i, Class parameterType, Class[] paraTypeArguments,
                                                  ParaAnnotationBean[]paraAnnotationBeans, ParaAnnotationBean paraBean) {
-            if (!isMultipart) {
+            if (!methodAnnotationBean.isMultipart()) {
                 throw parameterError(i, "@PartMap parameters can only be used with multipart encoding.");
             }
             gotPart = true;
@@ -369,7 +369,7 @@ public final class ServiceMethod<T> {
 
         private ParameterHandler<?> parsePart(int i, Class parameterType, Class[] paraTypeArguments,
                                               ParaAnnotationBean[]paraAnnotationBeans, ParaAnnotationBean paraBean) {
-            if (!isMultipart) {
+            if (!methodAnnotationBean.isMultipart()) {
                 throw parameterError(i, "@Part parameters can only be used with multipart encoding.");
             }
             //Part part = (Part) annotation;
@@ -411,7 +411,7 @@ public final class ServiceMethod<T> {
 
         private ParameterHandler<?> parseFieldMap(int i, Class parameterType, Class[] paraTypeArguments,
                                                   ParaAnnotationBean[]paraAnnotationBeans, ParaAnnotationBean paraBean) {
-            if (!isFormEncoded) {
+            if (!methodAnnotationBean.isFormEncoded()) {
                 throw parameterError(i, "@FieldMap parameters can only be used with form encoding.");
             }
             if (paraTypeArguments == null || paraTypeArguments.length != 2) {
@@ -430,7 +430,7 @@ public final class ServiceMethod<T> {
 
         private ParameterHandler<?> parseField(int i, Class parameterType, Class[] paraTypeArguments,
                                                ParaAnnotationBean[]paraAnnotationBeans, ParaAnnotationBean paraBean) {
-            if (!isFormEncoded) {
+            if (!methodAnnotationBean.isFormEncoded()) {
                 throw parameterError(i, "@Field parameters can only be used with form encoding.");
             }
             //Field field = (Field) annotation;
@@ -535,8 +535,8 @@ public final class ServiceMethod<T> {
             if (gotUrl) {
                 throw parameterError(i, "@Path parameters may not be used with @Url");
             }
-            if (relativeUrl == null) {
-                throw parameterError(i, "@Path can only be used with relative url on @%s", httpMethod);
+            if (methodAnnotationBean.getRelativeUrl() == null) {
+                throw parameterError(i, "@Path can only be used with relative url on @%s", methodAnnotationBean.getHttpMethod());
             }
             gotPath = true;
 
@@ -554,8 +554,8 @@ public final class ServiceMethod<T> {
                         PARAM_URL_REGEX.pattern(), name);
             }
             //Verify URL replacement name is actually present in the URL path.
-            if (!relativeUrlParamNames.contains(name)) {
-                throw parameterError(i, "URL \"%s\" does not contains \"{%s}\".", relativeUrl, name);
+            if (!methodAnnotationBean.getRelativeUrlParamNames().contains(name)) {
+                throw parameterError(i, "URL \"%s\" does not contains \"{%s}\".", methodAnnotationBean.getRelativeUrl(), name);
             }
         }
 
@@ -569,8 +569,8 @@ public final class ServiceMethod<T> {
             if (gotQuery) {
                 throw parameterError(i, "A @Url parameter must not come after a @Query");
             }
-            if (relativeUrl != null) {
-                throw parameterError(i, "@Url cannot be used with @%s URL", httpMethod);
+            if (methodAnnotationBean.getRelativeUrl()!= null) {
+                throw parameterError(i, "@Url cannot be used with @%s URL", methodAnnotationBean.getHttpMethod());
             }
 
             gotUrl = true;
@@ -583,51 +583,6 @@ public final class ServiceMethod<T> {
             }
         }
 
-        private Headers parseHeaders(String[] headers) {
-            Headers.Builder builder = new Headers.Builder();
-            for (String header : headers) {
-                int colon = header.indexOf(':');
-                if (colon == -1 || colon == 0 || colon == header.length() - 1) {
-                    throw methodError("@Headers value must be in the form \"Name: Value\". Found:\"%s\"", header);
-                }
-                String headerName = header.substring(0, colon);
-                String headerValue = header.substring(colon + 1).trim();
-                if ("Content-Type".equalsIgnoreCase(headerName)) {
-                    contentType = MediaType.parse(headerValue);
-                } else {
-                    builder.add(headerName, headerValue);
-                }
-            }
-            return builder.build();
-        }
-
-        private void parseHttpMethodAndPath(String httpMethod, String value, boolean hasBody) {
-            if (this.httpMethod != null) {
-                throw methodError("Only one HTTP method is allowed. Found: %s and %s.",
-                        this.httpMethod, httpMethod);
-            }
-            this.httpMethod = httpMethod;
-            this.hasBody = hasBody;
-
-            if (value.isEmpty()) {
-                return;
-            }
-
-            //Get the relative URL path and existing query string,if present
-            int question = value.indexOf('?');
-            if (question != -1 && question < value.length() - 1) {
-                //Ensure the query string does not have any named parameters
-                String queryParams = value.substring(question + 1);
-                Matcher queryParamMatcher = PARAM_URL_REGEX.matcher(queryParams);
-                if (queryParamMatcher.find()) {
-                    throw methodError("URL query string \"%s\" must not have replace block. "
-                            + "For dynamic query parameters user @Query.", queryParams);
-                }
-            }
-
-            this.relativeUrl = value;
-            this.relativeUrlParamNames = parsePathParameters(value);
-        }
 
         private Converter<ResponseBody, T> createResponseConverter() {
             //Annotation[] annotations = methodAnnotations;

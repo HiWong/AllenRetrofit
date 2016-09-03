@@ -7,6 +7,10 @@ public class PartMapBean implements ParaAnnotationBean {
 
     private String encoding = "binary";
 
+    public PartMapBean(String encoding){
+        this.encoding=encoding;
+    }
+
     @Override
     public int annotationType() {
         return PARTMAP;

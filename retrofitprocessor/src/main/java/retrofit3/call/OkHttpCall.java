@@ -174,7 +174,7 @@ public final class OkHttpCall<T> implements Call<T> {
         if(call==null){
             throw new NullPointerException("Call.Factory returned null.");
         }
-        return null;
+        return call;
     }
 
     Response<T>parseResponse(okhttp3.Response rawResponse) throws IOException {

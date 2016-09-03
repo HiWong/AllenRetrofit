@@ -42,16 +42,16 @@ public interface DeviceApi {
     @ConverterFactories
     Converter.Factory[]converterFactories={GsonConverterFactory.create()};
 
-    @Executor
-    java.util.concurrent.Executor executor=java.util.concurrent.Executors.newFixedThreadPool(3);
+    //@Executor
+    //java.util.concurrent.Executor executor=java.util.concurrent.Executors.newFixedThreadPool(3);
 
     //String getDeviceName();
     //int getDeviceWeight();
 
-    @FormUrlEncoded
+    //@FormUrlEncoded
     @GET(DeviceConfig.RECOMMANDAPPURL + ServiceAction.RECOMAND)
     Observable<AppResponse> getRecommandAppList(
-            @Query(value="page",encoded=false) String page, @Query("code") String code, @Query("version") String version);
+            @Query("page") String page, @Query("code") String code, @Query("version") String version);
 
     @FormUrlEncoded
     @GET("/device/list")

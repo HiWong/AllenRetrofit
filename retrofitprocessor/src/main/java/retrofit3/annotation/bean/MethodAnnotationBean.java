@@ -37,6 +37,9 @@ public class MethodAnnotationBean implements Serializable{
     }
 
     private Headers parseHeaders(String[] headers) {
+        if(null==headers||headers.length==0){
+            return null;
+        }
         Headers.Builder builder = new Headers.Builder();
         for (String header : headers) {
             int colon = header.indexOf(':');

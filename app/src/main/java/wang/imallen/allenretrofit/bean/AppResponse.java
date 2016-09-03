@@ -80,6 +80,23 @@ public class AppResponse extends BaseHttpResponse implements Serializable {
     public void setList(List<AppItem> positionitems) {
         this.positionitems = positionitems;
     }
+
+    @Override
+    public String toString(){
+        StringBuilder sb=new StringBuilder();
+        sb.append("name:");
+        sb.append(name);
+        sb.append(",count:");
+        sb.append(count);
+        sb.append(",code:");
+        sb.append(code);
+        sb.append(",page:");
+        sb.append(page);
+        sb.append(",pageSize:");
+        sb.append(pagesize);
+        return sb.toString();
+    }
+
 }
 
 

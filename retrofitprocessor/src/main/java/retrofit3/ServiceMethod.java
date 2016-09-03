@@ -211,8 +211,6 @@ public final class ServiceMethod<T> {
             return patterns;
         }
 
-
-
         public ServiceMethod build() {
             callAdapter = createCallAdapter();
             if (responseType == Response.class || responseType == okhttp3.Response.class) {
@@ -233,7 +231,7 @@ public final class ServiceMethod<T> {
             }
 
             if (!methodAnnotationBean.isHasBody()) {
-                if (!methodAnnotationBean.isMultipart()) {
+                if (methodAnnotationBean.isMultipart()) {
                     throw methodError("Multipart can only be specified on HTTP methods with request body (e.g., @POST).");
                 }
                 if (methodAnnotationBean.isFormEncoded()) {
@@ -265,6 +263,9 @@ public final class ServiceMethod<T> {
                 throw methodError("Non-boddy HTTP method cannot contain @Body.");
             }
             if (methodAnnotationBean.isFormEncoded() && !gotField) {
+                throw methodError("Multipart method must contain at least one @Part.");
+            }
+            if (methodAnnotationBean.isMultipart() && !gotPart) {
                 throw methodError("Multipart method must contain at least one @Part.");
             }
             return new ServiceMethod<>(this);

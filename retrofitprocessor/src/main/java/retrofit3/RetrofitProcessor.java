@@ -359,7 +359,7 @@ public class RetrofitProcessor extends AbstractProcessor {
          }else{
              methodBuilder.addStatement("Object[]args=new Object[$L]",parameterNames.size());
              for(int i=0;i<parameterNames.size();++i){
-                 methodBuilder.addStatement("args[$L]=$S",i,parameterNames.get(i));
+                 methodBuilder.addStatement("args[$L]=$L",i,parameterNames.get(i));
              }
          }
 
@@ -395,6 +395,7 @@ public class RetrofitProcessor extends AbstractProcessor {
         methodBuilder.addStatement("rawBean.setHasBody($L)",methodBean.isHasBody());
         methodBuilder.addStatement("rawBean.setFormEncoded($L)",methodBean.isFormEncoded());
         methodBuilder.addStatement("rawBean.setMultipart($L)",methodBean.isMultipart());
+        methodBuilder.addStatement("rawBean.setRelativeUrl($S)",methodBean.getRelativeUrl());
         methodBuilder.addStatement("rawBean.setStreaming($L)",methodBean.isStreaming());
         if(methodBean.getRelativeUrlParamNames()!=null&&methodBean.getRelativeUrlParamNames().size()>0){
             methodBuilder.addStatement("Set<String>relativeUrlParamNames=new $T<>()",Set.class);
@@ -560,7 +561,7 @@ public class RetrofitProcessor extends AbstractProcessor {
             VariableElement fieldElement=(VariableElement)element;
             parseVariableElement(fieldElement);
             String fieldName=fieldElement.getSimpleName().toString();
-            Object constantValue=fieldElement.getConstantValue();
+            //Object constantValue=fieldElement.getConstantValue();
             TypeElement apiElement=(TypeElement)fieldElement.getEnclosingElement();
             ApiBean apiBean=apiBeanMap.get(apiElement.getQualifiedName().toString());
             if(null!=apiBean){

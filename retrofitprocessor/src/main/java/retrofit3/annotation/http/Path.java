@@ -20,6 +20,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
 import static java.lang.annotation.ElementType.PARAMETER;
+import static java.lang.annotation.RetentionPolicy.CLASS;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
@@ -47,7 +48,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * Path parameters may not be {@code null}.
  */
 @Documented
-@Retention(RUNTIME)
+@Retention(CLASS)
 @Target(PARAMETER)
 public @interface Path {
   String value();

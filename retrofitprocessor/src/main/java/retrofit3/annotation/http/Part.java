@@ -22,6 +22,7 @@ import java.lang.annotation.Target;
 //import retrofit2.Converter;
 
 import static java.lang.annotation.ElementType.PARAMETER;
+import static java.lang.annotation.RetentionPolicy.CLASS;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
@@ -53,7 +54,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  */
 @Documented
 @Target(PARAMETER)
-@Retention(RUNTIME)
+@Retention(CLASS)
 public @interface Part {
   /**
    * The name of the part. Required for all parameter types except

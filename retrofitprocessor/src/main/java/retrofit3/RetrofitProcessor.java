@@ -4,6 +4,7 @@ import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
+import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 import com.squareup.javapoet.TypeVariableName;
@@ -92,7 +93,6 @@ import retrofit3.annotation.http.Url;
 @AutoService(Processor.class)
 public class RetrofitProcessor extends AbstractProcessor {
 
-
     private static final String CANONICALNAME="canonicalName";
 
     private Messager messager;
@@ -179,7 +179,7 @@ public class RetrofitProcessor extends AbstractProcessor {
             if(isFirst){
                 isFirst=false;
                 retrofitManagerPackageName=bean.getPackageName();
-                retrofitManagerBuilder=getRetrofitManagerBuilder();
+                retrofitManagerBuilder=getRetrofitManagerBuilder(retrofitManagerPackageName);
             }
 
             //RetrofitManager.getInstance().addMethodBeanMap(bean);
@@ -187,9 +187,12 @@ public class RetrofitProcessor extends AbstractProcessor {
             //RetrofitManager.getInstance().addProxy(bean.getPackageName()+"."+bean.getApiName());
         }
 
-        /*
+
         if(null!=retrofitManagerBuilder){
-            TypeSpec retrofitManagerTypeSpec=retrofitManagerBuilder.addMethod(proxyMethodSpecBuilder.build()).build();
+            proxyMethodSpecBuilder.addStatement("throw new RuntimeException($S)","No matched api for this class, have you ever declared it?");
+            MethodSpec proxyMethod=proxyMethodSpecBuilder.build();
+
+            TypeSpec retrofitManagerTypeSpec=retrofitManagerBuilder.addMethod(proxyMethod).build();
             JavaFile javaFile=JavaFile.builder(retrofitManagerPackageName,retrofitManagerTypeSpec).build();
             try{
                 javaFile.writeTo(processingEnv.getFiler());
@@ -197,8 +200,6 @@ public class RetrofitProcessor extends AbstractProcessor {
                 ex.printStackTrace();
             }
         }
-        */
-
 
     }
 
@@ -206,21 +207,54 @@ public class RetrofitProcessor extends AbstractProcessor {
 
         TypeVariableName typeVariableName=TypeVariableName.get("T",Object.class);
 
+        //TypeName clazzTypeName= ParameterizedTypeName.get(Class.class,typeVariableName);
+        TypeName clazzTypeName=ParameterizedTypeName.get(ClassName.get(Class.class),typeVariableName);
+
         MethodSpec.Builder methodBuilder=MethodSpec.methodBuilder("getProxy")
                 .addModifiers(Modifier.PUBLIC)
                 .addTypeVariable(typeVariableName)
                 .returns(typeVariableName)
-                .addParameter(String.class,CANONICALNAME);
+                .addParameter(clazzTypeName,"clazz");
+                //.addParameter(ClassName.get("java.lang","Class<T>"),"clazz");
+                //.addParameter(Class.class,"clazz");
+                //.addParameter(String.class,CANONICALNAME);
+
         return methodBuilder;
     }
 
-    private TypeSpec.Builder getRetrofitManagerBuilder(){
+    private TypeSpec.Builder getRetrofitManagerBuilder(String packageName){
+
+        FieldSpec instanceFieldSpec=FieldSpec.builder(ClassName.get(packageName,"RetrofitManager"),"instance")
+                .addModifiers(Modifier.PRIVATE,Modifier.STATIC,Modifier.VOLATILE)
+                .build();
+
+        MethodSpec constructorMethod=MethodSpec.constructorBuilder()
+                .addModifiers(Modifier.PRIVATE)
+                .build();
+
+        MethodSpec instanceMethod=MethodSpec.methodBuilder("getInstance")
+                .addModifiers(Modifier.PUBLIC,Modifier.STATIC)
+                .returns(ClassName.get(packageName,"RetrofitManager"))
+                .beginControlFlow("if(null==instance)")
+                .beginControlFlow("synchronized(RetrofitManager.class)")
+                .beginControlFlow("if(null==instance)")
+                .addStatement("instance=new RetrofitManager()")
+                .endControlFlow()
+                .endControlFlow()
+                .endControlFlow()
+                .addStatement("return instance")
+                .build();
+
         //也许可以通过processingEnv或roundEnv获取packageName
         TypeSpec.Builder retrofitManagerSpec=TypeSpec.classBuilder("RetrofitManager")
-                .addModifiers(Modifier.PUBLIC,Modifier.FINAL);
+                .addModifiers(Modifier.PUBLIC,Modifier.FINAL)
+                .addField(instanceFieldSpec)
+                .addMethod(constructorMethod)
+                .addMethod(instanceMethod);
         //要针对各个ApiProxy设置不同的init方法,如initDeviceApiProxy()是用于初始化DeviceApiProxy的
         return retrofitManagerSpec;
     }
+
 
 
     private boolean isEmpty(String str){
@@ -247,6 +281,7 @@ public class RetrofitProcessor extends AbstractProcessor {
         constructMethodBuilder.addStatement("retrofitBuilder.baseUrl($S)",bean.getBaseUrl());
         constructMethodBuilder.addStatement("retrofitBuilder.validateEagerly($L)",bean.isValidateEagerly());
 
+        constructMethodBuilder.addStatement("retrofitBuilder.setApiName($S)",bean.getApiName());
 
         if(!isEmpty(bean.getCallFactoryFieldName())){
             constructMethodBuilder.addStatement("retrofitBuilder.callFactory($N)",bean.getCallFactoryFieldName());
@@ -270,9 +305,14 @@ public class RetrofitProcessor extends AbstractProcessor {
 
         MethodSpec constructMethod=constructMethodBuilder.build();
 
+        /*
         FieldSpec instanceFieldSpec=FieldSpec.builder(ClassName.get(bean.getPackageName(),bean.getApiName()+"Proxy"),"instance")
                 .addModifiers(Modifier.PRIVATE,Modifier.STATIC,Modifier.VOLATILE)
                 .initializer("new $L()",bean.getApiName()+"Proxy")
+                .build();
+        */
+        FieldSpec instanceFieldSpec=FieldSpec.builder(ClassName.get(bean.getPackageName(),bean.getApiName()+"Proxy"),"instance")
+                .addModifiers(Modifier.PRIVATE,Modifier.STATIC,Modifier.VOLATILE)
                 .build();
 
         TypeSpec.Builder apiProxyTypeBuilder=TypeSpec.classBuilder(bean.getApiName()+"Proxy")
@@ -307,29 +347,26 @@ public class RetrofitProcessor extends AbstractProcessor {
 
         String canonicalName=bean.getPackageName()+"."+bean.getApiName();
         //At last,we need to add judge
-        proxyMethodSpecBuilder.beginControlFlow("if($S.equals($L))",canonicalName,CANONICALNAME)
-                .addStatement("return $T.getInstance()",ClassName.get(bean.getPackageName(),bean.getApiName()+"Proxy"));
-
-
+        proxyMethodSpecBuilder.beginControlFlow("if($L.class==clazz)",canonicalName)
+                .addStatement("return (T)$T.getInstance()",ClassName.get(bean.getPackageName(),bean.getApiName()+"Proxy"))
+                .endControlFlow();
     }
 
     public MethodSpec getInstanceMethodSpec(ApiBean apiBean){
-        MethodSpec instanceMethodSpec=MethodSpec.methodBuilder("getInstance")
-                .addModifiers(Modifier.PUBLIC,Modifier.STATIC)
-                .returns(ClassName.get(apiBean.getPackageName(),apiBean.getApiName()+"Proxy"))
-                .addStatement("return instance")
-                .build();
-        return instanceMethodSpec;
-    }
-    /*
-    public MethodSpec getInstanceMethodSpec(ApiBean apiBean){
-        MethodSpec instanceMethodSpec=MethodSpec.methodBuilder("getInstance()")
+        MethodSpec instanceMethod=MethodSpec.methodBuilder("getInstance")
                 .addModifiers(Modifier.PUBLIC,Modifier.STATIC)
                 .returns(ClassName.get(apiBean.getPackageName(),apiBean.getApiName()+"Proxy"))
                 .beginControlFlow("if(null==instance)")
-                .addStatement("synchronized($L.class)")
+                .beginControlFlow("synchronized($L.class)",apiBean.getApiName()+"Proxy")
+                .beginControlFlow("if(null==instance)")
+                .addStatement("instance=new $L()",apiBean.getApiName()+"Proxy")
+                .endControlFlow()
+                .endControlFlow()
+                .endControlFlow()
+                .addStatement("return instance")
+                .build();
+        return instanceMethod;
     }
-    */
 
     private TypeName getTypeName(TypeMirror mirror){
         return TypeName.get(mirror);
@@ -446,9 +483,9 @@ public class RetrofitProcessor extends AbstractProcessor {
             }
         }
 
-        methodBuilder.addStatement("return retrofit.adapt($S,$S,$L.class,returnTypeArguments,$L.class," +
+        methodBuilder.addStatement("return retrofit.adapt($S,$L.class,returnTypeArguments,$L.class," +
                 "responseTypeArguments,rawBean,paraAnnotationBeansArray,parameterTypes,"+
-                "parameterTypeArguments,args)",apiBean.getApiName(),methodBean.getMethodDeclaration(),
+                "parameterTypeArguments,args)",methodBean.getMethodDeclaration(),
                 methodBean.getRawReturnTypeName(),methodBean.getResponseTypeName());
 
         methodBuilder.endControlFlow();
@@ -779,21 +816,6 @@ public class RetrofitProcessor extends AbstractProcessor {
         parameterAnnotationBeansArray[index]=new ParaAnnotationBean[paraAnnotationBeanList.size()];
         paraAnnotationBeanList.toArray(parameterAnnotationBeansArray[index]);
 
-        /*
-        Class[]annotationClassArray={Url.class,Path.class,Query.class,QueryMap.class,Header.class,Field.class,
-        FieldMap.class,Part.class,PartMap.class,Body.class};
-        List<Annotation>annotationList=new ArrayList<>();
-
-        for(Class annotationClass:annotationClassArray){
-            Annotation[]annotations=variableElement.getAnnotationsByType(annotationClass);
-            if(annotations!=null&&annotations.length>0){
-                annotationList.add(annotations[0]);
-            }
-        }
-        Annotation[]annotationArray=new Annotation[annotationList.size()];
-        annotationList.toArray(annotationArray);
-        parameterAnnotationsArray[index]=annotationArray;
-        */
     }
 
     private void parseMethodAnnotations(ExecutableElement methodElement,MethodBean methodBean){
@@ -872,13 +894,6 @@ public class RetrofitProcessor extends AbstractProcessor {
         if(methodElement.getAnnotation(Streaming.class)!=null){
             methodBean.setStreaming(true);
         }
-        /*
-        if(methodAnnotations.size()<1){
-            return;
-        }
-        Annotation[]annotationArray=new Annotation[methodAnnotations.size()];
-        methodBean.setMethodAnnotations(methodAnnotations.toArray(annotationArray));
-        */
     }
 
 
@@ -890,41 +905,6 @@ public class RetrofitProcessor extends AbstractProcessor {
         }
         apiBean.setBaseUrl(config.baseUrl());
         apiBean.setValidateEagerly(config.validateEagerly());
-    }
-
-
-    private void createApiProxy(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Messager messager) {
-        //typeElement是注解类型,诸如Field,GET,POST,Query这样的
-        for (TypeElement typeElement : annotations) {
-
-            parseTypeElement(typeElement);
-
-            parseGeneralAnnotation(typeElement,roundEnv);
-        }
-    }
-
-
-    private void generateJavaFile(TypeElement typeElement){
-        String packageName=getPackageName(processingEnv.getElementUtils(),typeElement);
-
-        MethodSpec constructorMethod=MethodSpec.constructorBuilder()
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(String.class,"greeting")
-                .addStatement("this.$N=$N","greeting","greeting")
-                .build();
-
-        TypeSpec apiProxy=TypeSpec.classBuilder(typeElement.getSimpleName()+"Proxy")
-                .addModifiers(Modifier.PUBLIC)
-                .addField(String.class,"greeting",Modifier.PRIVATE,Modifier.FINAL)
-                .addMethod(constructorMethod)
-                .build();
-
-        JavaFile javaFile= JavaFile.builder(packageName,apiProxy).build();
-        try{
-            javaFile.writeTo(processingEnv.getFiler());
-        }catch(IOException ex){
-            ex.printStackTrace();
-        }
     }
 
     private String getPackageName(Elements elementUtils,TypeElement type){
@@ -977,18 +957,6 @@ public class RetrofitProcessor extends AbstractProcessor {
         TypeMirror typeMirror = typeElement.getSuperclass();
         List<? extends TypeParameterElement> typeParameterElements = typeElement.getTypeParameters();
 
-        /*
-        try {
-            ClassLoader classLoader=RetrofitProcessor.class.getClassLoader();
-            classLoader.loadClass(typeElement.getQualifiedName().toString());
-            Class<?> clazz = Class.forName(typeElement.getQualifiedName().toString());
-            Method[] methods = clazz.getMethods();
-            Method[] declaredMethods = clazz.getDeclaredMethods();
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        */
-
     }
 
     /**
@@ -1040,15 +1008,6 @@ public class RetrofitProcessor extends AbstractProcessor {
             Url url = variableElement.getAnnotation(Url.class);
 
         }
-    }
-
-    private String getOriginalType(TypeMirror typeMirror){
-        if(null==typeMirror){
-            return null;
-        }
-        //typeMirror为rx.Observable<wang.imallen.allenretrofit.bean.AppResponse>时,typeElement为rx.Observable
-        TypeElement typeElement=(TypeElement)processingEnv.getTypeUtils().asElement(typeMirror);
-        return getOriginalType(typeElement);
     }
 
     private String getRawType(TypeMirror typeMirror){
@@ -1106,25 +1065,6 @@ public class RetrofitProcessor extends AbstractProcessor {
 
     }
 
-    /**
-     * 实际上只要考虑那几种可以作用于方法的Annotation即可
-     * @param type
-     * @param methodElement
-     */
-    private void parseAnnotationByType(DeclaredType type,ExecutableElement methodElement){
-        if(null==type){
-            return;
-        }
-        if(DELETE.class.getCanonicalName().equals(type.toString())){
-            DELETE delete=methodElement.getAnnotation(DELETE.class);
-        }else if(FormUrlEncoded.class.getCanonicalName().equals(type.toString())){
-            FormUrlEncoded formUrlEncoded=methodElement.getAnnotation(FormUrlEncoded.class);
-        }else if(GET.class.getCanonicalName().equals(type.toString())){
-            GET get=methodElement.getAnnotation(GET.class);
-        }else if(POST.class.getCanonicalName().equals(type.toString())){
-            POST post=methodElement.getAnnotation(POST.class);
-        }
-    }
 
     private void parseAnnotationsOfMethodElement(ExecutableElement methodElement){
         //annotationMirrors是类似{retrofit3.annotation.http.FormUrlEncoded,retrofit3.annotation.http.GET("http://appstore.aginomoto.com/api/mobile/position")}这样的

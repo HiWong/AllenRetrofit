@@ -60,17 +60,6 @@ public class MethodBean implements Serializable{
     private boolean streaming=false;
     ///////end of method annotations related//////////////////
 
-    /*
-    public Annotation[] getMethodAnnotations() {
-        return methodAnnotations;
-    }
-
-    public void setMethodAnnotations(Annotation[] methodAnnotations) {
-        this.methodAnnotations = methodAnnotations;
-    }
-    */
-
-
     public String getMethodName() {
         return methodName;
     }
@@ -85,6 +74,18 @@ public class MethodBean implements Serializable{
 
     public void setParameterTypeArgumentsNameArray(String[][] parameterTypeArgumentsNameArray) {
         this.parameterTypeArgumentsNameArray = parameterTypeArgumentsNameArray;
+        boolean allNullFlag=true;
+        if(null!=parameterTypeArgumentsNameArray){
+            for(int i=0;i<parameterTypeArgumentsNameArray.length;++i){
+                if(parameterTypeArgumentsNameArray[i]!=null){
+                    allNullFlag=false;
+                    break;
+                }
+            }
+            if(allNullFlag){
+                this.parameterTypeArgumentsNameArray=null;
+            }
+        }
     }
 
     public String[] getParameterTypeNames() {

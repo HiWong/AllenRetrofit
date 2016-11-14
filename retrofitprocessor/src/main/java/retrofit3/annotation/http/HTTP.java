@@ -22,6 +22,7 @@ import java.lang.annotation.Target;
 //import okhttp3.HttpUrl;
 
 import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.RetentionPolicy.CLASS;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
@@ -42,7 +43,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  */
 @Documented
 @Target(METHOD)
-@Retention(RUNTIME)
+@Retention(CLASS)
 public @interface HTTP {
   String method();
   /**

@@ -61,9 +61,7 @@ public final class ServiceMethod<T> {
     static final String PARAM = "[a-zA-Z][a-zA-Z0-9_-]*";
     static final Pattern PARAM_URL_REGEX = Pattern.compile("\\{(" + PARAM + ")\\}");
     static final Pattern PARAM_NAME_REGEX = Pattern.compile(PARAM);
-
-    static String apiName;
-
+    //static String apiName;
 
     final okhttp3.Call.Factory callFactory;
     final CallAdapter<?> callAdapter;
@@ -180,12 +178,11 @@ public final class ServiceMethod<T> {
         }
         */
 
-        public Builder(Retrofit retrofit, String apiName, String methodDeclaration, Class rawReturnType,
+        public Builder(Retrofit retrofit,String methodDeclaration, Class rawReturnType,
                        Class[] returnTypeArguments, Class responseType, Class[] responseTypeArguments,
                        RawMethodAnnotationBean rawBean, ParaAnnotationBean[][]parameterAnnotationBeansArray,
                        Class[] parameterTypes, Class[][] parameterTypeArguments) {
             this.retrofit = retrofit;
-            ServiceMethod.apiName = apiName;
             this.methodDeclaration = methodDeclaration;
             this.rawReturnType = rawReturnType;
             this.returnTypeArguments = returnTypeArguments;
@@ -253,7 +250,11 @@ public final class ServiceMethod<T> {
                 */
                 ParaAnnotationBean[]paraAnnotationBeans=parameterAnnotationBeansArray[i];
 
-                parameterHandlers[i] = parseParameter(i, parameterType, parameterTypeArgumentsArray[i], paraAnnotationBeans);
+                Class[]parameterTypeArguments=null;
+                if(null!=parameterTypeArgumentsArray){
+                    parameterTypeArguments=parameterTypeArgumentsArray[i];
+                }
+                parameterHandlers[i] = parseParameter(i, parameterType, parameterTypeArguments, paraAnnotationBeans);
             }
 
             if (methodAnnotationBean.getRelativeUrl() == null && !gotUrl) {
@@ -614,7 +615,7 @@ public final class ServiceMethod<T> {
             message = String.format(message, args);
             return new IllegalArgumentException(message
                     + "\n    for method "
-                    + apiName
+                    + retrofit.getApiName()
                     + "."
                     + methodDeclaration, cause);
         }

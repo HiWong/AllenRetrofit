@@ -11,11 +11,6 @@ public class HeaderBean implements ParaAnnotationBean {
         this.value=value;
     }
 
-    @Override
-    public int annotationType() {
-        return HEADER;
-    }
-
     public String getValue() {
         return value;
     }

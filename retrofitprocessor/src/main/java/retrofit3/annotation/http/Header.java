@@ -20,6 +20,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
 import static java.lang.annotation.ElementType.PARAMETER;
+import static java.lang.annotation.RetentionPolicy.CLASS;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
@@ -39,7 +40,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * @author Adrian Cole (adrianc@netflix.com)
  */
 @Documented
-@Retention(RUNTIME)
+@Retention(CLASS)
 @Target(PARAMETER)
 public @interface Header {
   String value();

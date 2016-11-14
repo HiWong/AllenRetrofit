@@ -5,8 +5,4 @@ package retrofit3.annotation.bean.parameter;
  */
 public class BodyBean implements ParaAnnotationBean {
 
-    @Override
-    public int annotationType() {
-        return BODY;
-    }
 }

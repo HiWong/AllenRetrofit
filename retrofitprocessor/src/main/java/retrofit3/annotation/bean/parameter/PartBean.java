@@ -13,11 +13,6 @@ public class PartBean implements ParaAnnotationBean {
         this.encoding=encoding;
     }
 
-    @Override
-    public int annotationType() {
-        return PART;
-    }
-
     public String getEncoding() {
         return encoding;
     }

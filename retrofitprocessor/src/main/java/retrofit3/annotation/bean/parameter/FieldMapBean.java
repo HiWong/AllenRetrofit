@@ -5,11 +5,6 @@ package retrofit3.annotation.bean.parameter;
  */
 public class FieldMapBean implements ParaAnnotationBean {
 
-    @Override
-    public int annotationType() {
-        return FIELDMAP;
-    }
-
     public FieldMapBean(boolean encoded){
         this.encoded=encoded;
     }

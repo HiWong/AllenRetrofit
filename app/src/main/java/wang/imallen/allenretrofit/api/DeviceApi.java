@@ -19,6 +19,9 @@ import retrofit3.annotation.config.BaseConfig;
 import retrofit3.annotation.config.Executor;
 import retrofit3.annotation.http.FormUrlEncoded;
 import retrofit3.annotation.http.GET;
+import retrofit3.annotation.http.HTTP;
+import retrofit3.annotation.http.Header;
+import retrofit3.annotation.http.Headers;
 import retrofit3.annotation.http.Query;
 import retrofit3.call.adapter.CallAdapter;
 import retrofit3.converter.gson.GsonConverterFactory;
@@ -57,10 +60,27 @@ public interface DeviceApi {
     @GET("/device/list")
     retrofit3.call.Call<AppResponse>getDeviceList(@Query("type")String type);
 
+
     @FormUrlEncoded
     @GET("/device/name")
-    CustomCall<AppResponse>getDeviceNames(@Query("type")String type);
+    CustomCall<AppResponse>getDeviceNames(@Query("type")String type,@Query("name1")String name1,@Query("name2")String name2,
+                                          @Query("name3")String name3,@Query("name4")String name4,@Query("name5")String name5,
+                                          @Query("name6")String name6,@Query("name7")String name7,@Query("name8")String name8,
+                                          @Query("name9")String name9,@Query("name10")String name10);
 
+    @Headers("Cache-Control: max-age=86400")
+    //@GET("/device/name")
+    @HTTP(method="GET",path="/device/name",hasBody = false)
+    Observable<AppResponse>getDeviceNames(@Query("type")String type,@Query("name1")String name1,@Query("name2")String name2,
+                                          @Query("name3")String name3,@Query("name4")String name4,@Query("name5")String name5,
+                                          @Query("name6")String name6,@Query("name7")String name7,@Query("name8")String name8,
+                                          @Query("name9")String name9,@Query("name10")String name10,@Query("name11")String name11,
+                                          @Query("name12")String name12,@Query("name13")String name13,@Query("name14")String name14,
+                                          @Query("name15")String name15,@Query("name16")String name16,@Query("name17")String name17,
+                                          @Query("name18")String name18,@Query("name19")String name19,@Query("name20")String name20,
+                                          @Query("name21")String name21,@Query("name22")String name22,@Query("name23")String name23,
+                                         @Query("name24")String name24,@Query("name25")String name25,@Query("name26")String name26,
+                                        @Query("name27")String name27,@Query("name28")String name28,@Query("name29")String name29);
 
 
 }

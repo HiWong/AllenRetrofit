@@ -22,12 +22,13 @@ import java.lang.annotation.Target;
 //import okhttp3.HttpUrl;
 
 import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.RetentionPolicy.CLASS;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /** Make a PUT request. */
 @Documented
 @Target(METHOD)
-@Retention(RUNTIME)
+@Retention(CLASS)
 public @interface PUT {
   /**
    * A relative or absolute path, or full URL of the endpoint. This value is optional if the first

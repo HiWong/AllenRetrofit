@@ -15,6 +15,8 @@
  */
 package retrofit3;
 
+import android.util.Log;
+
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -63,6 +65,9 @@ import static retrofit3.Utils.checkNotNull;
  * @author Jake Wharton (jw@squareup.com)
  */
 public final class Retrofit {
+
+    private static final String TAG=Retrofit.class.getSimpleName();
+
     //private final Map<Method, ServiceMethod> serviceMethodCache = new LinkedHashMap<>();
     private final Map<String,ServiceMethod>serivceMethodCache=new HashMap<>();
     private final ReadWriteLock methodCacheLock=new ReentrantReadWriteLock();
@@ -74,15 +79,22 @@ public final class Retrofit {
     private final Executor callbackExecutor;
     private final boolean validateEagerly;
 
+    private final String apiName;
+
+    public String getApiName(){
+        return apiName;
+    }
+
     Retrofit(okhttp3.Call.Factory callFactory, HttpUrl baseUrl,
              List<Converter.Factory> converterFactories, List<CallAdapter.Factory> adapterFactories,
-             Executor callbackExecutor, boolean validateEagerly) {
+             Executor callbackExecutor, boolean validateEagerly,String apiName) {
         this.callFactory = callFactory;
         this.baseUrl = baseUrl;
         this.converterFactories = unmodifiableList(converterFactories); // Defensive copy at call site.
         this.adapterFactories = unmodifiableList(adapterFactories); // Defensive copy at call site.
         this.callbackExecutor = callbackExecutor;
         this.validateEagerly = validateEagerly;
+        this.apiName=apiName;
     }
 
     public ServiceMethod getServiceMethod(String methodDeclaration){
@@ -107,16 +119,19 @@ public final class Retrofit {
     public <T> T adapt(ServiceMethod serviceMethod,Object...args){
         OkHttpCall okHttpCall=new OkHttpCall<>(serviceMethod,args);
         Object ret=serviceMethod.callAdapter.adapt(okHttpCall);
+        Log.d(TAG,"end of create result");
         return (T)ret;
     }
 
-    public <T> T adapt(String apiName,String methodDeclaration,Class rawReturnType,Class[]returnTypeArguments,
+    public <T> T adapt(String methodDeclaration,Class rawReturnType,Class[]returnTypeArguments,
                        Class responseType,Class[]responseTypeArguments,RawMethodAnnotationBean rawBean,
                        ParaAnnotationBean[][]paraAnnotationBeansArray,Class[]parameterTypes,Class[][]parameterTypeArguments,
                        Object...args){
-        ServiceMethod serviceMethod=new ServiceMethod.Builder(this,apiName,methodDeclaration,rawReturnType,returnTypeArguments,
+        Log.d(TAG,"start of create ServiceMethod");
+        ServiceMethod serviceMethod=new ServiceMethod.Builder(this,methodDeclaration,rawReturnType,returnTypeArguments,
                 responseType,responseTypeArguments,rawBean,paraAnnotationBeansArray,parameterTypes,parameterTypeArguments)
                 .build();
+        Log.d(TAG,"end of create ServiceMethod");
         addServiceMethod(methodDeclaration,serviceMethod);
         return adapt(serviceMethod,args);
     }
@@ -350,6 +365,7 @@ public final class Retrofit {
         private List<CallAdapter.Factory> adapterFactories = new ArrayList<>();
         private Executor callbackExecutor;
         private boolean validateEagerly;
+        private String apiName;
 
         Builder(Platform platform) {
             this.platform = platform;
@@ -497,6 +513,11 @@ public final class Retrofit {
             return this;
         }
 
+        public Builder setApiName(String apiName){
+            this.apiName=apiName;
+            return this;
+        }
+
         /**
          * Create the {@link Retrofit} instance using the configured values.
          * <p/>
@@ -526,7 +547,7 @@ public final class Retrofit {
             List<Converter.Factory> converterFactories = new ArrayList<>(this.converterFactories);
 
             return new Retrofit(callFactory, baseUrl, converterFactories, adapterFactories,
-                    callbackExecutor, validateEagerly);
+                    callbackExecutor, validateEagerly,apiName);
         }
     }
 }

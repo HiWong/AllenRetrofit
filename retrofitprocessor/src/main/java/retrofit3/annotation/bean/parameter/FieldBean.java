@@ -13,11 +13,6 @@ public class FieldBean implements ParaAnnotationBean {
         this.encoded=encoded;
     }
 
-    @Override
-    public int annotationType() {
-        return FIELD;
-    }
-
     public boolean isEncoded() {
         return encoded;
     }

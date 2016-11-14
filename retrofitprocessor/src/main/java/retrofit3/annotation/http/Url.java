@@ -23,6 +23,7 @@ import java.lang.annotation.Target;
 //import retrofit2.Retrofit;
 
 import static java.lang.annotation.ElementType.PARAMETER;
+import static java.lang.annotation.RetentionPolicy.CLASS;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
@@ -37,6 +38,6 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  */
 @Documented
 @Target(PARAMETER)
-@Retention(RUNTIME)
+@Retention(CLASS)
 public @interface Url {
 }

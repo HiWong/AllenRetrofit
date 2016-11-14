@@ -13,11 +13,6 @@ public class QueryBean implements ParaAnnotationBean {
         this.encoded=encoded;
     }
 
-    @Override
-    public int annotationType() {
-        return QUERY;
-    }
-
     public boolean isEncoded() {
         return encoded;
     }

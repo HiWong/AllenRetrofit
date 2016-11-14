@@ -11,11 +11,6 @@ public class PartMapBean implements ParaAnnotationBean {
         this.encoding=encoding;
     }
 
-    @Override
-    public int annotationType() {
-        return PARTMAP;
-    }
-
     public String getEncoding() {
         return encoding;
     }

@@ -13,11 +13,6 @@ public class PathBean implements ParaAnnotationBean {
         this.encoded=encoded;
     }
 
-    @Override
-    public int annotationType() {
-        return PATH;
-    }
-
     public boolean isEncoded() {
         return encoded;
     }

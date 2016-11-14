@@ -1,20 +1,21 @@
 # AllenRetrofit
 Improved Type-safe HTTP client based on Retrofit for Android and Java by HiWong.
 
-Retrofit is a excellent type-safe http client. Yet there are still some details need to be improved. The first shortingcoming 
-is that Retrofit parsing http info by reflect instead of annotation, which has been proved to be more effective cause it 
+Undoubtedly,Retrofit is an excellent type-safe http client. Yet there are still some details need to be improved. The first shortingcoming 
+is that Retrofit parsing http info by reflection instead of annotation, which has been proved to be more effective cause it 
 parsing http info in build-time other than run-time. 
 
-Another is that developers have to write a Client class for a http api. That's really frustrating cause most of which are 
+Another is that developers have to write a Client class for every http interface. That's really frustrating cause most of which are 
 repeated work.
 
-Based on that 2 shortcomings, I developed my own client i.e AllenRetrofit.
+Based on that 2 blind sides, I created my own http client i.e AllenRetrofit.
 
 As you can see, unit tests and demos have not be accomplished. And that's why I haven't submitted it to jcenter or maven.
 
 I will add them soon. 
 
 #License
+=========
 
 Copyright 2016 HiWong(bettarwang@gmail.com).
 
